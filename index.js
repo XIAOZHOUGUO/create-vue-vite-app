@@ -126,6 +126,11 @@ async function main() {
   const dependencies = [];
   const devDependencies = [];
 
+  // 添加pnpm 依赖
+  if (packageManager === "pnpm") {
+    devDependencies.push("pnpm");
+  }
+
   // 如果用户选择需要 router，则安装并配置
   if (response.needsRouter) {
     dependencies.push("vue-router");
@@ -305,11 +310,13 @@ async function main() {
     }
   }
 
-  // 如果用户选择需要 git commit 规范，则安装 husky、lint-staged 和 commitlint
+  // 如果用户选择需要 git commit 规范，则安装 husky、lint-staged 和 commitlint等
   if (response.needsGitCommit) {
     devDependencies.push(
       "husky",
       "lint-staged",
+      "commitizen",
+      "cz-conventional-changelog",
       "@commitlint/cli",
       "@commitlint/config-conventional"
     );
@@ -336,7 +343,7 @@ async function main() {
       );
 
       const vscodeSection = [
-        ".vscode/", // 忽略 .vscode 目录本身
+        ".vscode/*", // 忽略 .vscode 目录下其他文件
         "!.vscode/extensions.json", // 但不忽略 extensions.json
         "!.vscode/settings.json", // 也不忽略 settings.json
       ];
@@ -480,6 +487,7 @@ async function main() {
 
   // 如果有 git commit 规范，添加 lint-staged 配置
   if (response.needsGitCommit) {
+    pkg.scripts.cz = "cz";
     pkg["lint-staged"] = {
       "*.{js,ts,vue}": "eslint --fix",
     };
@@ -524,7 +532,7 @@ async function main() {
 
   // 如果需要 git commit 规范，在依赖安装完成后初始化 husky
   if (response.needsGitCommit) {
-    console.log("正在初始化 husky...");
+    console.log("正在初始化 husky、commitizen...");
 
     // 使用 npx 更稳妥，兼容所有包管理器
     execSync("npx husky init", { stdio: "inherit", cwd: projectPath });
@@ -532,11 +540,7 @@ async function main() {
     // 直接写入 pre-commit 钩子文件
     fs.writeFileSync(
       path.join(projectPath, ".husky", "pre-commit"),
-      `#!/bin/sh
-. "$(dirname "$0")/_/husky.sh"
-
-npx lint-staged
-`
+      `npx lint-staged`
     );
     execSync(`chmod +x ${path.join(projectPath, ".husky", "pre-commit")}`, {
       stdio: "inherit",
@@ -546,19 +550,33 @@ npx lint-staged
     // 直接写入 commit-msg 钩子文件
     fs.writeFileSync(
       path.join(projectPath, ".husky", "commit-msg"),
-      `#!/bin/sh
-. "$(dirname "$0")/_/husky.sh"
-
-npx commitlint --edit "$1"
-`
+      `npx commitlint --edit "$1"`
     );
     execSync(`chmod +x ${path.join(projectPath, ".husky", "commit-msg")}`, {
       stdio: "inherit",
       cwd: projectPath,
     });
+    // 初始化一个git 仓库，并将默认分支设置为main
+    execSync("git init -b main", {
+      stdio: "inherit",
+      cwd: projectPath,
+    });
+
+    // 初始化 commitizen
+    const commitizenInitCommand =
+      packageManager === "npm"
+        ? "npm commitizen init cz-conventional-changelog --save-dev --save-exact"
+        : `pnpm commitizen init cz-conventional-changelog --pnpm --save-dev --save-exact`;
+    execSync(commitizenInitCommand, { stdio: "inherit", cwd: projectPath });
+
+    //  运行script prepare
+    execSync(`${packageManager} run prepare`, {
+      stdio: "inherit",
+      cwd: projectPath,
+    });
   }
 
-  console.log("依赖安装完成！");
+  console.log("\n依赖安装完成！");
 
   // 打印完成信息
   console.log(`\n🎉 项目创建成功! 现在运行:\n`);
