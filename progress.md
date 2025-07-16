@@ -30,6 +30,25 @@
     - **主流程编排**:
         - 新的 `main` 函数负责按顺序调用以上函数，清晰地展示了从用户输入到项目完成的整个过程。
     - **恢复 README 生成**: 重新集成了在初次重构中遗漏的 `README.md` 文件生成逻辑。该功能现在被封装在 `generateAndWriteReadme` 函数中，并在项目创建流程的末尾被调用。
+3.  **[已完成] 模板提取**: 将 `index.js` 中硬编码的文件内容提取到独立的 `templates` 目录中。
+    - **创建 `templates` 目录**: 用于存放所有模板文件。
+    - **模板文件创建**: 为 `router`, `pinia`, `eslint`, `unocss`, `commitlint`, `vscode` 配置以及 `README.md` 创建了对应的模板文件（`.tpl` 结尾）。
+    - **`copyTemplate` 辅助函数**: 实现了通用的模板复制和占位符替换功能。
+    - **`index.js` 改造**: 移除了所有硬编码的文件内容，转而使用 `copyTemplate` 函数来生成文件。
+
+## 问题修复与完善
+
+- **修复 `SyntaxError` (JSON 注释问题)**: 修正 `readJsonFile` 函数，使其在解析 JSON 文件前移除注释，解决了 `tsconfig.node.json` 无法被正确读取的问题。
+- **修复 `ENOENT` (`copyTemplate` 参数错误)**: 修正 `setupVSCode` 函数中 `copyTemplate` 的参数顺序，确保模板文件路径正确。
+- **恢复丢失的功能**: 
+    - **Pinia Store HMR**: 修复 `store.js.tpl` 和 `store.ts.tpl`，重新加入热更新代码。
+    - **`package.json` 脚本和配置**: 恢复 `commitizen` 的初始化逻辑，确保 `cz` 脚本、`config` 字段以及 `pnpm` 相关的配置被正确添加。
+    - **Commitizen 初始化**: 确保 `runPostInstallTasks` 中正确执行 `commitizen init` 和 `packageManager run prepare`。
+- **`pnpm` 作为开发依赖**: 在 `installDependencies` 函数中，如果选择 `pnpm` 作为包管理器，则将其自身作为开发依赖添加。
+- **修复 `package.json` `scripts` 覆盖问题**: 修正 `updatePackageJson` 函数，确保它只合并 `scripts` 和 `lint-staged` 字段，而不会覆盖 Vite 默认生成的其他脚本。
+- **完善 `README.md` 内容**: 恢复了关于 ESLint、Husky、lint-staged 和 Commitizen 的详细说明，并确保其根据用户选择动态生成。
+- **调整 `README.md` 结构**: 将“代码质量工具”部分移动到“目录结构”之后，使文档结构更合理。
+- **优化 `main.js/ts` 中的 `use` 调用**: 修改 `updateMainFile` 函数，将链式 `use` 调用改为逐行赋值和调用，提高代码可读性。
 
 ## 下一步
 

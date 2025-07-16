@@ -12,8 +12,9 @@ const { execSync } = require("child_process");
 
 /**
  * 执行一个 shell 命令，并包含错误处理和日志记录。
- * @param {string} command 要执行的命令。
- * @param {import('child_process').ExecSyncOptions} options 执行选项。
+ * 如果命令执行失败，将打印错误信息并退出进程。
+ * @param {string} command 要执行的命令字符串。
+ * @param {import('child_process').ExecSyncOptions} options 执行命令的选项。
  */
 function exec(command, options) {
   try {
@@ -26,30 +27,29 @@ function exec(command, options) {
 }
 
 /**
- * 读取并解析一个 JSON 文件，会先移除文件中的注释。
+ * 读取并解析一个 JSON 文件，会先移除文件中的单行和多行注释。
  * @param {string} filePath JSON 文件的路径。
  * @returns {object} 解析后的 JSON 对象。
  */
 function readJsonFile(filePath) {
   let content = fs.readFileSync(filePath, "utf-8");
-  // 移除JSON文件中的注释，以便JSON.parse可以正确工作
   const contentWithoutComments = content.replace(/\/\/.*|\/\*[^]*?\*\//g, "");
   return JSON.parse(contentWithoutComments);
 }
 
 /**
- * 将一个对象写入 JSON 文件。
+ * 将一个 JavaScript 对象写入到指定的 JSON 文件中，格式化为两空格缩进。
  * @param {string} filePath JSON 文件的路径。
- * @param {object} data 要写入的对象。
+ * @param {object} data 要写入的 JavaScript 对象。
  */
 function writeJsonFile(filePath, data) {
   fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
 }
 
 /**
- * 按字母顺序对对象的键进行排序。
+ * 对给定对象的键进行字母排序，并返回一个新的排序后的对象。
  * @param {object} obj 要排序的对象。
- * @returns {object} 排序后的对象。
+ * @returns {object} 键已排序的新对象。
  */
 function sortObjectKeys(obj) {
   if (!obj) return {};
@@ -61,6 +61,27 @@ function sortObjectKeys(obj) {
     }, {});
 }
 
+/**
+ * 从模板目录复制文件到目标路径，并可选择性地替换占位符。
+ * 占位符格式为 `{{ placeholderName }}`。
+ * 未被替换的占位符（即在 `replacements` 对象中没有对应键的）将被移除。
+ * @param {string} templateName 模板文件名 (位于 `templates/` 目录下)。
+ * @param {string} targetPath 目标文件的完整路径。
+ * @param {object} [replacements={}] 一个包含占位符名称和替换值的对象。
+ */
+function copyTemplate(templateName, targetPath, replacements = {}) {
+  const templatePath = path.join(__dirname, "templates", templateName);
+  let content = fs.readFileSync(templatePath, "utf-8");
+
+  for (const [placeholder, value] of Object.entries(replacements)) {
+    const regex = new RegExp(`{{ ${placeholder} }}`, "g");
+    content = content.replace(regex, value);
+  }
+
+  content = content.replace(/{{ .* }}\n?/g, "");
+  fs.writeFileSync(targetPath, content);
+}
+
 // #endregion
 
 // =================================================================
@@ -68,8 +89,8 @@ function sortObjectKeys(obj) {
 // =================================================================
 
 /**
- * 提示用户输入项目配置选项。
- * @returns {Promise<object>} 一个解析为用户所选选项的 Promise。
+ * 提示用户输入项目名称和各项配置选项。
+ * @returns {Promise<object>} 一个 Promise，解析为包含用户所选项目名称和配置选项的对象。
  */
 async function promptUserOptions() {
   const { projectName } = await prompts({
@@ -151,9 +172,10 @@ async function promptUserOptions() {
 }
 
 /**
- * 创建项目目录。
- * @param {string} projectName 项目名称。
- * @returns {string} 项目的绝对路径。
+ * 在当前工作目录下创建新的项目目录。
+ * 如果目录已存在，则不会执行任何操作。
+ * @param {string} projectName 要创建的项目名称。
+ * @returns {string} 新创建的项目目录的绝对路径。
  */
 function createProject(projectName) {
   const projectPath = path.join(process.cwd(), projectName);
@@ -162,9 +184,10 @@ function createProject(projectName) {
 }
 
 /**
- * 初始化一个 Vite 项目。
- * @param {string} projectPath 项目的路径。
- * @param {object} options 用户的所选选项。
+ * 使用 Vite 创建一个基础项目脚手架。
+ * 根据用户选择的 TypeScript 选项和包管理器来生成相应的 Vite 命令。
+ * @param {string} projectPath 项目的绝对路径。
+ * @param {object} options 用户的配置选项，包含 `packageManager` 和 `needsTypeScript`。
  */
 function scaffoldVite(projectPath, options) {
   const { packageManager, needsTypeScript } = options;
@@ -179,29 +202,41 @@ function scaffoldVite(projectPath, options) {
 }
 
 /**
- * 修改主入口文件 (main.js/ts)。
- * @param {string} projectPath 项目的路径。
- * @param {object} options 用户的所选选项。
- * @param {string[]} importsToAdd 需要添加的 import 语句数组。
- * @param {string[]} usesToAdd 需要添加的 app.use() 语句数组。
+ * 修改项目的主入口文件 (main.js 或 main.ts)。
+ * 主要用于添加全局导入语句和 Vue 实例的 `use` 方法调用。
+ * 将 `createApp(App)` 赋值给一个变量，然后逐行调用 `use()` 方法，最后再调用 `mount()`。
+ * @param {string} projectPath 项目的绝对路径。
+ * @param {object} options 用户的配置选项，包含 `needsTypeScript`。
+ * @param {string[]} importsToAdd 一个字符串数组，每个字符串代表一个要添加到文件顶部的 import 语句。
+ * @param {string[]} usesToAdd 一个字符串数组，每个字符串代表一个要添加到 Vue 应用实例上的 `.use()` 调用（例如 `.use(router)`）。
  */
 function updateMainFile(projectPath, options, importsToAdd, usesToAdd) {
   const mainFileName = options.needsTypeScript ? "main.ts" : "main.js";
   const mainFilePath = path.join(projectPath, "src", mainFileName);
   let content = fs.readFileSync(mainFilePath, "utf-8");
 
-  const appCreation = /createApp\(App\)/;
+  // 找到 createApp(App).mount('#app') 这一行
+  const mountRegex = /createApp\(App\)\.mount\(['"]#app['"]\)/;
+
+  let appInstanceCode = "const app = createApp(App);\n";
+
+  // 添加 use() 调用
+  if (usesToAdd.length > 0) {
+    usesToAdd.forEach((useCall) => {
+      appInstanceCode += `app${useCall};\n`;
+    });
+  }
+
+  // 添加 mount() 调用
+  appInstanceCode += "app.mount('#app');";
 
   // 在顶部添加 import 语句
   if (importsToAdd.length > 0) {
     content = `${importsToAdd.join("\n")}\n${content}`;
   }
 
-  // 链式调用 .use() 方法
-  if (usesToAdd.length > 0) {
-    const usesString = usesToAdd.join("");
-    content = content.replace(appCreation, `createApp(App)${usesString}`);
-  }
+  // 替换原有的链式调用为新的逐行调用
+  content = content.replace(mountRegex, appInstanceCode);
 
   fs.writeFileSync(mainFilePath, content);
 }
@@ -210,23 +245,26 @@ function updateMainFile(projectPath, options, importsToAdd, usesToAdd) {
 // #region 功能设置函数
 // =================================================================
 
+/**
+ * 设置 Vue Router。
+ * 包括创建路由文件、视图文件，并修改 `App.vue`。
+ * 返回此功能所需依赖、开发依赖、以及需要添加到主入口文件的 import 语句和 use() 调用。
+ * @param {string} projectPath 项目的绝对路径。
+ * @param {object} options 用户的配置选项，包含 `needsTypeScript`。
+ * @returns {object} 包含此功能所需依赖、开发依赖、import 语句和 use() 调用的对象。
+ */
 function setupRouter(projectPath, options) {
   const { needsTypeScript } = options;
   const routerDir = path.join(projectPath, "src", "router");
   fs.mkdirSync(routerDir, { recursive: true });
 
-  const routerFile = needsTypeScript ? "index.ts" : "index.js";
-  const routerContent = needsTypeScript
-    ? `import { createRouter, createWebHistory } from 'vue-router'\nimport type { RouteRecordRaw } from 'vue-router'\nimport HomeView from '../views/Home.vue'\n\nconst routes: Array<RouteRecordRaw> = [\n  { path: '/', name: 'Home', component: HomeView }\n]\n\nconst router = createRouter({ history: createWebHistory(), routes })\nexport default router`
-    : `import { createRouter, createWebHistory } from 'vue-router'\nimport HomeView from '../views/Home.vue'\n\nconst routes = [\n  { path: '/', name: 'Home', component: HomeView }\n]\n\nconst router = createRouter({ history: createWebHistory(), routes })\nexport default router`;
-  fs.writeFileSync(path.join(routerDir, routerFile), routerContent);
+  const templateName = needsTypeScript ? "router.ts.tpl" : "router.js.tpl";
+  const targetFile = needsTypeScript ? "index.ts" : "index.js";
+  copyTemplate(templateName, path.join(routerDir, targetFile));
 
   const viewsDir = path.join(projectPath, "src", "views");
   fs.mkdirSync(viewsDir, { recursive: true });
-  fs.writeFileSync(
-    path.join(viewsDir, "Home.vue"),
-    "<template><h1>Home</h1></template>"
-  );
+  copyTemplate("Home.vue.tpl", path.join(viewsDir, "Home.vue"));
 
   const appVuePath = path.join(projectPath, "src", "App.vue");
   let appVueContent = fs.readFileSync(appVuePath, "utf-8");
@@ -235,62 +273,65 @@ function setupRouter(projectPath, options) {
     .replace(/import HelloWorld.*\n/, "");
   fs.writeFileSync(appVuePath, appVueContent);
 
-  updateMainFile(
-    projectPath,
-    options,
-    ["import router from './router'"],
-    [".use(router)"]
-  );
-
   return {
     dependencies: ["vue-router"],
     devDependencies: [],
+    importsToAdd: ["import router from './router'"],
+    usesToAdd: [".use(router)"],
   };
 }
 
+/**
+ * 设置 Pinia 状态管理。
+ * 包括创建 Pinia 实例文件和示例 store 文件。
+ * 返回此功能所需依赖、开发依赖、以及需要添加到主入口文件的 import 语句和 use() 调用。
+ * @param {string} projectPath 项目的绝对路径。
+ * @param {object} options 用户的配置选项，包含 `needsTypeScript`。
+ * @returns {object} 包含此功能所需依赖、开发依赖、import 语句和 use() 调用的对象。
+ */
 function setupPinia(projectPath, options) {
   const { needsTypeScript } = options;
   const storeDir = path.join(projectPath, "src", "store");
   fs.mkdirSync(storeDir, { recursive: true });
 
-  const storeFile = needsTypeScript ? "index.ts" : "index.js";
-  const storeContent = needsTypeScript
-    ? `import { defineStore } from 'pinia'\n\nexport const useCounterStore = defineStore('counter', {\n  state: () => ({ count: 0 as number }),\n  actions: {\n    increment() { this.count++ },\n  },\n})`
-    : `import { defineStore } from 'pinia'\n\nexport const useCounterStore = defineStore('counter', {\n  state: () => ({ count: 0 }),\n  actions: {\n    increment() { this.count++ },\n  },\n})`;
-  fs.writeFileSync(path.join(storeDir, storeFile), storeContent);
+  // 复制 Pinia 实例文件
+  const piniaIndexTemplate = needsTypeScript ? "store-index.ts.tpl" : "store-index.js.tpl";
+  const piniaIndexFile = needsTypeScript ? "index.ts" : "index.js";
+  copyTemplate(piniaIndexTemplate, path.join(storeDir, piniaIndexFile));
 
-  updateMainFile(
-    projectPath,
-    options,
-    ["import { createPinia } from 'pinia'"],
-    [".use(createPinia())"]
-  );
+  // 复制示例 store 文件
+  const counterStoreTemplate = needsTypeScript ? "store-counter.ts.tpl" : "store-counter.js.tpl";
+  const counterStoreFile = needsTypeScript ? "counter.ts" : "counter.js";
+  copyTemplate(counterStoreTemplate, path.join(storeDir, counterStoreFile));
 
   return {
     dependencies: ["pinia"],
     devDependencies: [],
+    importsToAdd: ["import pinia from './store'"],
+    usesToAdd: [".use(pinia)"],
   };
 }
 
+/**
+ * 设置 ESLint。
+ * 包括创建 ESLint 配置文件，并根据需要更新 `tsconfig.node.json`。
+ * @param {string} projectPath 项目的绝对路径。
+ * @param {object} options 用户的配置选项，包含 `needsTypeScript` 和 `needsUnoCSS`。
+ * @returns {object} 包含此功能所需依赖、开发依赖和脚本的对象。
+ */
 function setupEslint(projectPath, options) {
   const { needsTypeScript, needsUnoCSS } = options;
-  const eslintConfigFile = needsTypeScript
-    ? "eslint.config.ts"
-    : "eslint.config.js";
-  let eslintConfigContent = `import antfu from '@antfu/eslint-config'\n\nexport default antfu({\n  vue: true,\n  typescript: ${needsTypeScript},\n  ${
-    needsUnoCSS ? "unocss: true," : ""
-  }\n});\n`;
-  fs.writeFileSync(
-    path.join(projectPath, eslintConfigFile),
-    eslintConfigContent
-  );
+  const targetFile = needsTypeScript ? "eslint.config.ts" : "eslint.config.js";
+
+  copyTemplate("eslint.config.js.tpl", path.join(projectPath, targetFile), {
+    needsTypeScript: needsTypeScript,
+    unoESLintConfig: needsUnoCSS ? "unocss: true," : "",
+  });
 
   if (needsTypeScript) {
     const tsconfigNodePath = path.join(projectPath, "tsconfig.node.json");
     const tsconfig = readJsonFile(tsconfigNodePath);
-    tsconfig.include = [
-      ...new Set([...(tsconfig.include || []), "eslint.config.ts"]),
-    ];
+    tsconfig.include = [...new Set([...(tsconfig.include || []), targetFile])];
     writeJsonFile(tsconfigNodePath, tsconfig);
   }
 
@@ -301,11 +342,18 @@ function setupEslint(projectPath, options) {
   };
 }
 
+/**
+ * 设置 UnoCSS。
+ * 包括创建 UnoCSS 配置文件，修改 Vite 配置文件。
+ * 返回此功能所需依赖、开发依赖、以及需要添加到主入口文件的 import 语句和 use() 调用。
+ * @param {string} projectPath 项目的绝对路径。
+ * @param {object} options 用户的配置选项，包含 `needsTypeScript`。
+ * @returns {object} 包含此功能所需依赖、开发依赖、import 语句和 use() 调用的对象。
+ */
 function setupUnoCSS(projectPath, options) {
   const { needsTypeScript } = options;
-  const unoConfigFile = needsTypeScript ? "uno.config.ts" : "uno.config.js";
-  const unoConfigContent = `import { defineConfig, presetAttributify, presetUno } from 'unocss'\n\nexport default defineConfig({\n  presets: [\n    presetAttributify(),\n    presetUno(),\n  ],\n})\n`;
-  fs.writeFileSync(path.join(projectPath, unoConfigFile), unoConfigContent);
+  const targetFile = needsTypeScript ? "uno.config.ts" : "uno.config.js";
+  copyTemplate("uno.config.js.tpl", path.join(projectPath, targetFile));
 
   const viteConfigFile = needsTypeScript ? "vite.config.ts" : "vite.config.js";
   let viteConfigContent = fs.readFileSync(
@@ -314,35 +362,31 @@ function setupUnoCSS(projectPath, options) {
   );
   viteConfigContent = viteConfigContent
     .replace(
-      /import { defineConfig } from 'vite'/,
+      /import { defineConfig } from 'vite'/g,
       `import { defineConfig } from 'vite'\nimport UnoCSS from 'unocss/vite'`
     )
     .replace(/(plugins:\s*\[)/, `$1\n    UnoCSS(),`);
   fs.writeFileSync(path.join(projectPath, viteConfigFile), viteConfigContent);
 
-  updateMainFile(projectPath, options, ["import 'virtual:uno.css'"], []);
-
-  if (needsTypeScript) {
-    const tsconfigNodePath = path.join(projectPath, "tsconfig.node.json");
-    const tsconfig = readJsonFile(tsconfigNodePath);
-    tsconfig.include = [
-      ...new Set([...(tsconfig.include || []), "uno.config.ts"]),
-    ];
-    writeJsonFile(tsconfigNodePath, tsconfig);
-  }
-
   return {
     dependencies: [],
     devDependencies: ["unocss", "@unocss/eslint-plugin"],
+    importsToAdd: ["import 'virtual:uno.css'"],
+    usesToAdd: [], // UnoCSS 不需要 app.use() 调用
   };
 }
 
+/**
+ * 设置 Git 提交规范和钩子。
+ * 包括创建 `commitlint.config.js`，并返回所需的依赖、开发依赖和脚本。
+ * @param {string} projectPath 项目的绝对路径。
+ * @returns {object} 包含此功能所需依赖、开发依赖和脚本的对象。
+ */
 function setupGitHooks(projectPath) {
-  fs.writeFileSync(
-    path.join(projectPath, "commitlint.config.js"),
-    `export default { extends: ['@commitlint/config-conventional'] };`
+  copyTemplate(
+    "commitlint.config.js.tpl",
+    path.join(projectPath, "commitlint.config.js")
   );
-
   return {
     dependencies: [],
     devDependencies: [
@@ -354,100 +398,131 @@ function setupGitHooks(projectPath) {
       "@commitlint/config-conventional",
     ],
     scripts: { cz: "cz" },
-    "lint-staged": {
-      "*.{js,ts,vue}": "eslint --fix",
-    },
+    "lint-staged": { "*.{js,ts,vue}": "eslint --fix" },
   };
 }
 
+/**
+ * 设置 VS Code 相关配置。
+ * 包括创建 `.vscode` 目录，生成 `extensions.json` (推荐扩展) 和 `settings.json` (工作区设置)。
+ * @param {string} projectPath 项目的绝对路径。
+ * @param {object} options 用户的配置选项，包含 `needsEslint` 和 `needsUnoCSS`。
+ */
 function setupVSCode(projectPath, options) {
   const { needsEslint, needsUnoCSS } = options;
   const vscodeDir = path.join(projectPath, ".vscode");
   fs.mkdirSync(vscodeDir, { recursive: true });
 
-  const extensions = {
-    recommendations: [
-      "Vue.volar",
-      ...(needsEslint ? ["dbaeumer.vscode-eslint"] : []),
-      ...(needsUnoCSS ? ["antfu.unocss"] : []),
-    ],
-  };
-  writeJsonFile(path.join(vscodeDir, "extensions.json"), extensions);
+  copyTemplate("extensions.json.tpl", path.join(vscodeDir, "extensions.json"), {
+    eslintExtension: needsEslint ? "dbaeumer.vscode-eslint" : "",
+    unocssExtension: needsUnoCSS ? "antfu.unocss" : "",
+  });
 
-  const settings = {
-    "eslint.useFlatConfig": true,
-    "explorer.fileNesting.enabled": true,
-    "explorer.fileNesting.patterns": {
-      "tsconfig.json": "tsconfig.*.json, env.d.ts",
-      "vite.config.*": "jsconfig*, vitest.config.*",
-      "package.json": "package-lock.json, pnpm*, .yarnrc*, .eslint*",
-    },
-    "prettier.enable": false,
-    "editor.formatOnSave": false,
-    "editor.codeActionsOnSave": {
-      "source.fixAll.eslint": "explicit",
-      "source.organizeImports": "never",
-    },
-    "eslint.rules.customizations": [
-      { rule: "style/*", severity: "off" },
-      { rule: "format/*", severity: "off" },
-    ],
-    "eslint.validate": [
-      "javascript",
-      "typescript",
-      "vue",
-      "html",
-      "markdown",
-      "json",
-      "jsonc",
-      "yaml",
-    ],
-  };
-  writeJsonFile(path.join(vscodeDir, "settings.json"), settings);
+  copyTemplate("settings.json.tpl", path.join(vscodeDir, "settings.json"));
 }
 
-// #endregion
+/**
+ * 根据用户选项生成并写入 README.md 文件。
+ * @param {string} projectPath 项目的绝对路径。
+ * @param {object} options 用户的配置选项。
+ */
+function generateAndWriteReadme(projectPath, options) {
+  const {
+    needsTypeScript,
+    needsRouter,
+    needsPinia,
+    needsEslint,
+    needsGitCommit,
+    cssPreprocessor,
+    needsUnoCSS,
+  } = options;
+  let features = [];
+  if (needsTypeScript)
+    features.push(
+      `- **TypeScript**: 强类型 JavaScript，提升代码质量和开发效率。`
+    );
+  if (needsRouter)
+    features.push(`- **Vue Router**: 官方路由管理器，用于构建单页面应用。`);
+  if (needsPinia)
+    features.push(`- **Pinia**: 轻量级、类型安全的 Vue 状态管理库。`);
+  if (needsEslint) features.push(`- **ESLint**: 代码规范和风格检查工具...`);
+  if (cssPreprocessor !== "none")
+    features.push(`- **${cssPreprocessor}**: ${cssPreprocessor} 预处理器...`);
+  if (needsUnoCSS) features.push(`- **UnoCSS**: 即时按需原子化 CSS 引擎...`);
+  if (needsGitCommit)
+    features.push(
+      `- **Git Commit 规范**: 通过 Husky、lint-staged 和 Commitlint...`
+    );
+
+  copyTemplate("README.md.tpl", path.join(projectPath, "README.md"), {
+    projectName: options.projectName,
+    packageManager: options.packageManager,
+    features: features.join("\n"),
+    lintScript: needsEslint
+      ? `- \`${options.packageManager} run lint\`: 运行 ESLint 检查并自动修复代码中的问题。`
+      : "",
+    routerDir: needsRouter ? `│   ├── router/       # Vue Router 路由配置` : "",
+    piniaDir: needsPinia ? `│   ├── store/        # Pinia 状态管理模块` : "",
+    viewsDir: needsRouter ? `│   ├── views/        # 页面级 Vue 组件` : "",
+    mainFileExtension: needsTypeScript ? "ts" : "js",
+    viteConfigExtension: needsTypeScript ? "ts" : "js",
+    tsconfig: needsTypeScript
+      ? `├── tsconfig.json\n├── tsconfig.node.json`
+      : "",
+    eslintConfig: needsEslint
+      ? `├── eslint.config.${needsTypeScript ? "ts" : "js"}`
+      : "",
+    unocssConfig: needsUnoCSS
+      ? `├── uno.config.${needsTypeScript ? "ts" : "js"}`
+      : "",
+    commitlintConfig: needsGitCommit
+      ? `├── commitlint.config.js\n├── .husky/`
+      : "",
+  });
+}
 
 /**
- * 使用新的脚本、依赖等更新 package.json 文件。
- * @param {string} projectPath 项目的路径。
- * @param {object} updates 要应用到 package.json 的更新。
+ * 更新项目的 `package.json` 文件。
+ * 主要用于合并 `scripts` 和 `lint-staged` 字段，确保不覆盖 Vite 默认生成的配置。
+ * 依赖和开发依赖的更新由 `installDependencies` 函数处理。
+ * @param {string} projectPath 项目的绝对路径。
+ * @param {object} updates 包含要合并到 `package.json` 的 `scripts` 和 `lint-staged` 字段的对象。
  */
 function updatePackageJson(projectPath, updates) {
   const pkgPath = path.join(projectPath, "package.json");
   const pkg = readJsonFile(pkgPath);
 
-  Object.assign(pkg, updates);
-
-  if (updates.dependencies) {
-    pkg.dependencies = { ...pkg.dependencies, ...updates.dependencies };
-  }
-  if (updates.devDependencies) {
-    pkg.devDependencies = {
-      ...pkg.devDependencies,
-      ...updates.devDependencies,
-    };
-  }
+  // 仅合并 scripts，而不是覆盖
   if (updates.scripts) {
     pkg.scripts = { ...pkg.scripts, ...updates.scripts };
   }
 
-  pkg.dependencies = sortObjectKeys(pkg.dependencies);
-  pkg.devDependencies = sortObjectKeys(pkg.devDependencies);
+  // 仅合并 lint-staged，而不是覆盖
+  if (updates["lint-staged"]) {
+    pkg["lint-staged"] = { ...pkg["lint-staged"], ...updates["lint-staged"] };
+  }
 
+  // 依赖和开发依赖由 installDependencies 函数处理，此处无需排序和合并
   writeJsonFile(pkgPath, pkg);
 }
 
 /**
- * 使用指定的包管理器安装依赖。
- * @param {string} projectPath 项目的路径。
- * @param {object} options 用户的所选选项。
- * @param {string[]} deps 需要安装的生产依赖列表。
- * @param {string[]} devDeps 需要安装的开发依赖列表。
+ * 使用指定的包管理器安装项目的生产依赖和开发依赖。
+ * 会将所有依赖合并到 `package.json` 中，并按字母排序。
+ * 如果选择 `pnpm`，则会将其自身作为开发依赖添加。
+ * @param {string} projectPath 项目的绝对路径。
+ * @param {object} options 用户的配置选项，包含 `packageManager`。
+ * @param {string[]} deps 需要安装的生产依赖包名数组。
+ * @param {string[]} devDeps 需要安装的开发依赖包名数组。
  */
 function installDependencies(projectPath, options, deps, devDeps) {
   console.log(green("\n正在安装依赖... 请稍候。"));
   const { packageManager } = options;
+
+  // 如果选择 pnpm，则将 pnpm 添加到开发依赖中
+  if (packageManager === "pnpm") {
+    devDeps.push("pnpm");
+  }
 
   const pkgPath = path.join(projectPath, "package.json");
   const pkg = readJsonFile(pkgPath);
@@ -470,11 +545,13 @@ function installDependencies(projectPath, options, deps, devDeps) {
 }
 
 /**
- * 运行安装后任务，例如初始化 husky。
- * @param {string} projectPath 项目的路径。
- * @param {object} options 用户的所选选项。
+ * 运行安装后的任务，例如 ESLint 格式化和 Git 钩子初始化。
+ * @param {string} projectPath 项目的绝对路径。
+ * @param {object} options 用户的配置选项，包含 `needsEslint` 和 `needsGitCommit`。
  */
 function runPostInstallTasks(projectPath, options) {
+  const { packageManager } = options;
+
   if (options.needsEslint) {
     console.log(green("正在使用 ESLint 格式化项目..."));
     exec("npx eslint . --fix", { cwd: projectPath });
@@ -498,35 +575,47 @@ function runPostInstallTasks(projectPath, options) {
     exec(`chmod +x ${path.join(projectPath, ".husky", "commit-msg")}`, {
       cwd: projectPath,
     });
+
+    console.log(green("正在初始化 Commitizen..."));
+    const commitizenInitCommand =
+      packageManager === "npm"
+        ? "npm install -D commitizen cz-conventional-changelog && npx commitizen init cz-conventional-changelog --save-dev --save-exact"
+        : `pnpm add -D commitizen cz-conventional-changelog && pnpm commitizen init cz-conventional-changelog --pnpm --save-dev --save-exact`;
+    exec(commitizenInitCommand, { cwd: projectPath });
+
+    // 确保 husky 的 prepare 脚本被执行
+    exec(`${packageManager} run prepare`, { cwd: projectPath });
   }
 }
 
 /**
- * 向用户打印最终的操作说明。
- * @param {string} projectName 项目名称。
- * @param {string} packageManager 使用的包管理器。
+ * 向用户打印项目创建成功的消息和后续操作指引。
+ * @param {string} projectName 新创建的项目名称。
+ * @param {string} packageManager 使用的包管理器名称。
  */
 function logFinalInstructions(projectName, packageManager) {
-  console.log(bold(green(`\n🎉 项目创建成功!`)));
-  console.log(`\n开始使用, 请运行:\n`);
+  console.log(bold(green(`🎉 项目创建成功!`)));
+  console.log(`开始使用, 请运行:\n`);
   console.log(`  cd ${projectName}`);
   console.log(`  ${packageManager} dev\n`);
 }
 
-// =================================================================
-// #region 主执行流程
-// =================================================================
-
+/**
+ * 主函数，负责编排整个项目创建流程。
+ * 包括提示用户选项、创建项目、配置各项功能、安装依赖、执行安装后任务和生成 README。
+ */
 async function main() {
   const options = await promptUserOptions();
   const { projectName, packageManager } = options;
 
   const projectPath = createProject(projectName);
-  projectPath, options;
+  scaffoldVite(projectPath, options);
 
   const allDependencies = [];
   const allDevDependencies = [];
-  const pkgUpdates = { scripts: {}, "lint-staged": {} };
+  const pkgUpdates = { scripts: {} };
+  const allImportsToAdd = []; // 新增：收集所有需要添加的 import 语句
+  const allUsesToAdd = []; // 新增：收集所有需要添加的 use() 调用
 
   const featureSetups = {
     needsRouter: setupRouter,
@@ -543,14 +632,22 @@ async function main() {
       if (result.devDependencies)
         allDevDependencies.push(...result.devDependencies);
       if (result.scripts) Object.assign(pkgUpdates.scripts, result.scripts);
-      if (result["lint-staged"])
-        Object.assign(pkgUpdates["lint-staged"], result["lint-staged"]);
+      if (result["lint-staged"]) {
+        pkgUpdates["lint-staged"] = {
+          ...pkgUpdates["lint-staged"],
+          ...result["lint-staged"],
+        };
+      }
+      // 收集 import 和 use 调用
+      if (result.importsToAdd) allImportsToAdd.push(...result.importsToAdd);
+      if (result.usesToAdd) allUsesToAdd.push(...result.usesToAdd);
     }
   }
 
-  // 此函数不返回依赖项
-  setupVSCode(projectPath, options);
+  // 统一调用 updateMainFile
+  updateMainFile(projectPath, options, allImportsToAdd, allUsesToAdd);
 
+  setupVSCode(projectPath, options);
   updatePackageJson(projectPath, pkgUpdates);
 
   installDependencies(
@@ -561,11 +658,7 @@ async function main() {
   );
 
   runPostInstallTasks(projectPath, options);
-
-  // 注意: 如果需要，可以在此处添加 README 文件的生成逻辑。
-
   generateAndWriteReadme(projectPath, options);
-
   logFinalInstructions(projectName, packageManager);
 }
 
@@ -574,114 +667,3 @@ main().catch((e) => {
   console.error(red(e));
   process.exit(1);
 });
-
-/**
- * 根据用户选项生成 README.md 的内容。
- * @param {object} options 用户的所选选项。
- * @returns {string} README.md 的内容。
- */
-function generateReadmeContent(options) {
-  const {
-    projectName,
-    needsTypeScript,
-    needsRouter,
-    needsPinia,
-    needsEslint,
-    cssPreprocessor,
-    needsUnoCSS,
-    needsGitCommit,
-    packageManager,
-  } = options;
-
-  const ts = needsTypeScript;
-
-  let content = `# ${projectName}
-
-`;
-  content += `## 简介\n\n`;
-  content += `这是一个基于 [Vue 3](https://vuejs.org/) 和 [Vite](https://vitejs.dev/) 构建的现代前端项目。它集成了多种开发工具和最佳实践，旨在提供高效、可维护的开发体验。\n\n`;
-
-  content += `## 主要特性\n\n`;
-  content += `本项目根据您的选择，集成了以下功能：\n\n`;
-  if (ts)
-    content += `- **TypeScript**: 强类型 JavaScript，提升代码质量和开发效率。\n`;
-  content += `- **Vite**: 极速的前端构建工具，提供闪电般的开发服务器启动和热更新。\n`;
-  if (needsRouter)
-    content += `- **Vue Router**: 官方路由管理器，用于构建单页面应用。\n`;
-  if (needsPinia)
-    content += `- **Pinia**: 轻量级、类型安全的 Vue 状态管理库。\n`;
-  if (needsEslint)
-    content += `- **ESLint**: 代码规范和风格检查工具，配合 [@antfu/eslint-config](https://github.com/antfu/eslint-config) 提供开箱即用的配置。\n`;
-  if (cssPreprocessor !== "none")
-    content += `- **${cssPreprocessor}**: ${cssPreprocessor} 预处理器，增强 CSS 编写能力。\n`;
-  if (needsUnoCSS)
-    content += `- **UnoCSS**: 即时按需原子化 CSS 引擎，提供极致的开发灵活性和性能。\n`;
-
-  if (needsGitCommit) {
-    content += `- **Git Commit 规范**: 通过 [Husky](https://typicode.github.io/husky/)、[lint-staged](https://github.com/okonet/lint-staged) 和 [Commitlint](https://commitlint.js.org/) 强制执行统一的 Git 提交信息规范。\n`;
-    content += `  - **Husky 和 lint-staged**: Husky 用于管理 Git 钩子。配置了 pre-commit 钩子，运行 lint-staged，它会在暂存文件上运行 ESLint。这确保了没有带有 linting 错误的代码可以被提交。\n`;
-    content += `  - **Commitizen**: 用于强制执行约定式提交信息。使用时，请运行以下命令代替 \`git commit\`：\n\n`;
-    content += `    \`\`\`bash\n`;
-    content += `    git cz\n`;
-    content += `    \`\`\`\n\n`;
-    content += `    这将提示您一系列问题以生成约定式提交信息。有关提交信息格式的更多详细信息，请参阅 [Conventional Commits 规范](https://www.conventionalcommits.org/en/v1.0.0/)。\n\n`;
-  }
-
-  content += `## 快速开始\n\n`;
-  content += `请确保您已安装 [Node.js](https://nodejs.org/) (推荐 LTS 版本) 和 ${packageManager}。\n\n`;
-  content += `1. **安装依赖**\n\n`;
-  content += `\`\`\`bash\n`;
-  content += `${packageManager} install\n`;
-  content += `\`\`\`\n\n`;
-  content += `2. **运行开发服务器**\n\n`;
-  content += `\`\`\`bash\n`;
-  content += `${packageManager} run dev\n`;
-  content += `\`\`\`\n\n`;
-
-  content += `## 可用脚本\n\n`;
-  content += `- \`${packageManager} run dev\`: 在开发模式下运行应用。\n`;
-  content += `- \`${packageManager} run build\`: 为生产环境构建应用。\n`;
-  if (needsEslint)
-    content += `- \`${packageManager} run lint\`: 运行 ESLint 检查并自动修复代码中的问题。\n`;
-
-  content += `## 目录结构\n\n`;
-  content += `\`\`\`\n`;
-  content += `${projectName}/\n`;
-  content += `├── public/\n`;
-  content += `├── src/\n`;
-  content += `│   ├── assets/       # 静态资源\n`;
-  content += `│   ├── components/   # 可复用 Vue 组件\n`;
-  if (needsRouter) content += `│   ├── router/       # Vue Router 路由配置\n`;
-  if (needsPinia) content += `│   ├── store/        # Pinia 状态管理模块\n`;
-  if (needsRouter) content += `│   ├── views/        # 页面级 Vue 组件\n`;
-  content += `│   ├── App.vue       # 应用根组件\n`;
-  content += `│   └── main.${ts ? "ts" : "js"}    # 应用入口文件\n`;
-  content += `├── .vscode/          # VS Code 编辑器配置\n`;
-  content += `├── .gitignore        # Git 忽略文件\n`;
-  content += `├── index.html        # 应用入口 HTML 文件\n`;
-  content += `├── package.json      # 项目依赖和脚本配置\n`;
-  content += `├── vite.config.${ts ? "ts" : "js"} # Vite 配置文件\n`;
-  if (ts) content += `├── tsconfig.json\n├── tsconfig.node.json\n`;
-  if (needsEslint) content += `├── eslint.config.${ts ? "ts" : "js"}\n`;
-  if (needsUnoCSS) content += `├── uno.config.${ts ? "ts" : "js"}\n`;
-  if (needsGitCommit) content += `├── commitlint.config.js\n├── .husky/\n`;
-  content += `\`\`\`\n\n`;
-
-  content += `## 贡献\n\n`;
-  content += `欢迎通过 Pull Request 贡献代码，或提交 Issue 报告问题和提出建议。\n\n`;
-
-  return content;
-}
-
-/**
- * 生成并写入 README.md 文件。
- * @param {string} projectPath 项目的路径。
- * @param {object} options 用户的所选选项。
- */
-function generateAndWriteReadme(projectPath, options) {
-  console.log(green("正在生成 README.md 文件..."));
-  const readmeContent = generateReadmeContent(options);
-  fs.writeFileSync(path.join(projectPath, "README.md"), readmeContent);
-}
-
-// #endregion
