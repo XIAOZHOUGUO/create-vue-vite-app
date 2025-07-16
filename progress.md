@@ -49,6 +49,12 @@
 - **完善 `README.md` 内容**: 恢复了关于 ESLint、Husky、lint-staged 和 Commitizen 的详细说明，并确保其根据用户选择动态生成。
 - **调整 `README.md` 结构**: 将“代码质量工具”部分移动到“目录结构”之后，使文档结构更合理。
 - **优化 `main.js/ts` 中的 `use` 调用**: 修改 `updateMainFile` 函数，将链式 `use` 调用改为逐行赋值和调用，提高代码可读性。
+- **优化 Pinia 模块结构**: 将 Pinia 实例创建与 store 定义分离，使 `src/store/index.ts` 导出 Pinia 实例，`src/store/counter.ts` 作为示例 store。
+
+## 辅助函数提取
+
+- **创建 `utils.js`**: 将 `exec`, `readJsonFile`, `writeJsonFile`, `sortObjectKeys`, `copyTemplate` 等辅助函数从 `index.js` 提取到 `utils.js`。
+- **模块化导入**: `index.js` 现在从 `utils.js` 导入这些辅助函数，进一步提高了代码的模块化和可维护性。
 
 ## 下一步
 
