@@ -4,7 +4,13 @@ const fs = require("fs");
 const path = require("path");
 const prompts = require("prompts");
 const { red, green, bold } = require("kolorist");
-const { exec, readJsonFile, writeJsonFile, sortObjectKeys, copyTemplate } = require("./utils");
+const {
+  exec,
+  readJsonFile,
+  writeJsonFile,
+  sortObjectKeys,
+  copyTemplate,
+} = require("./utils");
 
 // =================================================================
 // #region 核心逻辑
@@ -217,12 +223,16 @@ function setupPinia(projectPath, options) {
   fs.mkdirSync(storeDir, { recursive: true });
 
   // 复制 Pinia 实例文件
-  const piniaIndexTemplate = needsTypeScript ? "store-index.ts.tpl" : "store-index.js.tpl";
+  const piniaIndexTemplate = needsTypeScript
+    ? "store-index.ts.tpl"
+    : "store-index.js.tpl";
   const piniaIndexFile = needsTypeScript ? "index.ts" : "index.js";
   copyTemplate(piniaIndexTemplate, path.join(storeDir, piniaIndexFile));
 
   // 复制示例 store 文件
-  const counterStoreTemplate = needsTypeScript ? "store-counter.ts.tpl" : "store-counter.js.tpl";
+  const counterStoreTemplate = needsTypeScript
+    ? "store-counter.ts.tpl"
+    : "store-counter.js.tpl";
   const counterStoreFile = needsTypeScript ? "counter.ts" : "counter.js";
   copyTemplate(counterStoreTemplate, path.join(storeDir, counterStoreFile));
 
@@ -381,11 +391,11 @@ function generateAndWriteReadme(projectPath, options) {
     packageManager: options.packageManager,
     features: features.join("\n"),
     lintScript: needsEslint
-      ? `- \`${options.packageManager} run lint\`: 运行 ESLint 检查并自动修复代码中的问题。`
+      ? `- \`${options.packageManager} run lint\`: run lint and auto fix code.`
       : "",
-    routerDir: needsRouter ? `│   ├── router/       # Vue Router 路由配置` : "",
-    piniaDir: needsPinia ? `│   ├── store/        # Pinia 状态管理模块` : "",
-    viewsDir: needsRouter ? `│   ├── views/        # 页面级 Vue 组件` : "",
+    routerDir: needsRouter ? `│   ├── router/       # Vue Router` : "",
+    piniaDir: needsPinia ? `│   ├── store/        # Pinia` : "",
+    viewsDir: needsRouter ? `│   ├── views/        # pages` : "",
     mainFileExtension: needsTypeScript ? "ts" : "js",
     viteConfigExtension: needsTypeScript ? "ts" : "js",
     tsconfig: needsTypeScript
@@ -401,6 +411,39 @@ function generateAndWriteReadme(projectPath, options) {
       ? `├── commitlint.config.js\n├── .husky/`
       : "",
   });
+
+  // 生成中文 README
+  copyTemplate(
+    "README.zh-CN.md.tpl",
+    path.join(projectPath, "README.zh-CN.md"),
+    {
+      projectName: options.projectName,
+      packageManager: options.packageManager,
+      features: features.join("\n"),
+      lintScript: needsEslint
+        ? `- \`${options.packageManager} run lint\`: 运行 ESLint 检查并自动修复代码中的问题。`
+        : "",
+      routerDir: needsRouter
+        ? `│   ├── router/       # Vue Router 路由配置`
+        : "",
+      piniaDir: needsPinia ? `│   ├── store/        # Pinia 状态管理模块` : "",
+      viewsDir: needsRouter ? `│   ├── views/        # 页面级 Vue 组件` : "",
+      mainFileExtension: needsTypeScript ? "ts" : "js",
+      viteConfigExtension: needsTypeScript ? "ts" : "js",
+      tsconfig: needsTypeScript
+        ? `├── tsconfig.json\n├── tsconfig.node.json`
+        : "",
+      eslintConfig: needsEslint
+        ? `├── eslint.config.${needsTypeScript ? "ts" : "js"}`
+        : "",
+      unocssConfig: needsUnoCSS
+        ? `├── uno.config.${needsTypeScript ? "ts" : "js"}`
+        : "",
+      commitlintConfig: needsGitCommit
+        ? `├── commitlint.config.js\n├── .husky/`
+        : "",
+    }
+  );
 }
 
 /**

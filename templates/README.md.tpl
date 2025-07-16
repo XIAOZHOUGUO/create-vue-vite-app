@@ -1,55 +1,81 @@
 # {{ projectName }}
 
-## 简介
+## Introduction
 
-这是一个基于 [Vue 3](https://vuejs.org/) 和 [Vite](https://vitejs.dev/) 构建的现代前端项目。它集成了多种开发工具和最佳实践，旨在提供高效、可维护的开发体验。
+This is a modern frontend project built with [Vue 3](https://vuejs.org/) and [Vite](https://vitejs.dev/). It integrates various development tools and best practices, aiming to provide an efficient and maintainable development experience.
 
-## 主要特性
+## Features
 
-本项目根据您的选择，集成了以下功能：
+This project integrates the following features based on your selections:
 
 {{ features }}
 
-## 快速开始
+## Getting Started with the CLI
 
-请确保您已安装 [Node.js](https://nodejs.org/) (推荐 LTS 版本) 和 {{ packageManager }}。
+To use this CLI tool, ensure you have [Node.js](https://nodejs.org/) (LTS recommended) installed.
 
-1. **安装依赖**
+1.  **Install the CLI (Globally - Recommended for frequent use)**
 
-```bash
-{{ packageManager }} install
-```
+    ```bash
+    npm install -g @xiaozhou/create-vue-vite-app
+    # or
+    pnpm install -g @xiaozhou/create-vue-vite-app
+    # or
+    yarn global add @xiaozhou/create-vue-vite-app
+    ```
 
-2. **运行开发服务器**
+2.  **Create a New Project**
 
-```bash
-{{ packageManager }} run dev
-```
+    ```bash
+    create-vue
+    # or use npx/pnpx for one-time use without global installation
+    npx @xiaozhou/create-vue-vite-app
+    # or
+    pnpx @xiaozhou/create-vue-vite-app
+    ```
 
-## 可用脚本
+    Follow the prompts to configure your new project.
 
-- `{{ packageManager }} run dev`: 在开发模式下运行应用。
-- `{{ packageManager }} run build`: 为生产环境构建应用。
+## Project Quick Start
+
+Once your project is created, navigate into the project directory and follow these steps:
+
+1.  **Install Dependencies**
+
+    ```bash
+    {{ packageManager }} install
+    ```
+
+2.  **Run Development Server**
+
+    ```bash
+    {{ packageManager }} run dev
+    ```
+
+## Available Scripts
+
+-   `{{ packageManager }} run dev`: Runs the application in development mode.
+-   `{{ packageManager }} run build`: Builds the application for production.
 {{ lintScript }}
 
-## 目录结构
+## Directory Structure
 
 ```
 {{ projectName }}/
 ├── public/
 ├── src/
-│   ├── assets/       # 静态资源
-│   ├── components/   # 可复用 Vue 组件
+│   ├── assets/       # Static assets
+│   ├── components/   # Reusable Vue components
 {{ routerDir }}
 {{ piniaDir }}
 {{ viewsDir }}
-│   ├── App.vue       # 应用根组件
-│   └── main.{{ mainFileExtension }}    # 应用入口文件
-├── .vscode/          # VS Code 编辑器配置
-├── .gitignore        # Git 忽略文件
-├── index.html        # 应用入口 HTML 文件
-├── package.json      # 项目依赖和脚本配置
-├── vite.config.{{ viteConfigExtension }} # Vite 配置文件
+│   ├── App.vue       # Root Vue component
+│   └── main.{{ mainFileExtension }}    # Application entry file
+├── .vscode/          # VS Code editor configuration
+├── .gitignore        # Git ignore file
+├── index.html        # Application entry HTML file
+├── package.json      # Project dependencies and scripts
+├── vite.config.{{ viteConfigExtension }} # Vite configuration file
 {{ tsconfig }}
 {{ eslintConfig }}
 {{ unocssConfig }}
@@ -58,6 +84,6 @@
 
 {{ codeQualityTools }}
 
-## 贡献
+## Contributing
 
-欢迎通过 Pull Request 贡献代码，或提交 Issue 报告问题和提出建议。
+Contributions via Pull Requests are welcome, as are Issue reports and suggestions.
