@@ -259,8 +259,9 @@ function setupEslint(projectPath, options) {
     needsTypeScript: needsTypeScript,
     unoESLintConfig: needsUnoCSS ? "unocss: true," : "",
   });
-
+  const devDependencies = ["eslint", "@antfu/eslint-config"];
   if (needsTypeScript) {
+    devDependencies.push("jiti");
     const tsconfigNodePath = path.join(projectPath, "tsconfig.node.json");
     const tsconfig = readJsonFile(tsconfigNodePath);
     tsconfig.include = [...new Set([...(tsconfig.include || []), targetFile])];
@@ -269,7 +270,7 @@ function setupEslint(projectPath, options) {
 
   return {
     dependencies: [],
-    devDependencies: ["eslint", "@antfu/eslint-config"],
+    devDependencies,
     scripts: { lint: "eslint . --fix" },
   };
 }
