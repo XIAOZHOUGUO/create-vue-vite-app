@@ -6,6 +6,11 @@
     "create-vue": "./index.js"
   },
   "main": "index.js",
+  "homepage": "https://github.com/XIAOZHOUGUO/create-vue-vite-app",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/XIAOZHOUGUO/create-vue-vite-app.git"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

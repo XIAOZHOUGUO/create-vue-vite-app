@@ -14,13 +14,13 @@
 
 项目创建完成后，进入项目目录并按照以下步骤操作：
 
-1.  **安装依赖**
+1. **安装依赖**
 
     ```bash
     {{ packageManager }} install
     ```
 
-2.  **运行开发服务器**
+2. **运行开发服务器**
 
     ```bash
     {{ packageManager }} run dev
@@ -28,13 +28,13 @@
 
 ## 可用脚本
 
--   `{{ packageManager }} run dev`: 在开发模式下运行应用。
--   `{{ packageManager }} run build`: 为生产环境构建应用。
+- `{{ packageManager }} run dev`: 在开发模式下运行应用。
+- `{{ packageManager }} run build`: 为生产环境构建应用。
 {{ lintScript }}
 
 ## 目录结构
 
-```
+```text
 {{ projectName }}/
 ├── public/
 ├── src/
@@ -57,7 +57,3 @@
 ```
 
 {{ codeQualityTools }}
-
-## 贡献
-
-欢迎通过 Pull Request 贡献代码，或提交 Issue 报告问题和提出建议。

@@ -14,13 +14,13 @@ This project integrates the following features based on your selections:
 
 Once your project is created, navigate into the project directory and follow these steps:
 
-1.  **Install Dependencies**
+1. **Install Dependencies**
 
     ```bash
     {{ packageManager }} install
     ```
 
-2.  **Run Development Server**
+2. **Run Development Server**
 
     ```bash
     {{ packageManager }} run dev
@@ -28,13 +28,13 @@ Once your project is created, navigate into the project directory and follow the
 
 ## Available Scripts
 
--   `{{ packageManager }} run dev`: Runs the application in development mode.
--   `{{ packageManager }} run build`: Builds the application for production.
+- `{{ packageManager }} run dev`: Runs the application in development mode.
+- `{{ packageManager }} run build`: Builds the application for production.
 {{ lintScript }}
 
 ## Directory Structure
 
-```
+```text
 {{ projectName }}/
 ├── public/
 ├── src/
@@ -57,7 +57,3 @@ Once your project is created, navigate into the project directory and follow the
 ```
 
 {{ codeQualityTools }}
-
-## Contributing
-
-Contributions via Pull Requests are welcome, as are Issue reports and suggestions.

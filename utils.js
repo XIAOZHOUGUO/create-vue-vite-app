@@ -55,24 +55,31 @@ function sortObjectKeys(obj) {
 }
 
 /**
- * 从模板目录复制文件到目标路径，并可选择性地替换占位符。
- * 占位符格式为 `{{ placeholderName }}`。
- * 未被替换的占位符（即在 `replacements` 对象中没有对应键的）将被移除。
+ * 读取并处理一个模板文件，返回填充了内容的字符串。
  * @param {string} templateName 模板文件名 (位于 `templates/` 目录下)。
- * @param {string} targetPath 目标文件的完整路径。
- * @param {object} [replacements={}] 一个包含占位符名称和替换值的对象。
+ * @param {object} [replacements={}] 一个包含占位符和替换值的对象。
+ * @returns {string} 处理完成的模板内容。
  */
-function copyTemplate(templateName, targetPath, replacements = {}) {
+function copyTemplate(templateName, replacements = {}) {
   const templatePath = path.join(__dirname, "templates", templateName);
   let content = fs.readFileSync(templatePath, "utf-8");
 
   for (const [placeholder, value] of Object.entries(replacements)) {
-    const regex = new RegExp(`{{ ${placeholder} }}`, "g");
-    content = content.replace(regex, value);
+    // 为独自占据一行的占位符创建正则表达式
+    const lineRegex = new RegExp(`^\s*{{ ${placeholder} }}\s*$\n?`, "gm");
+
+    // 如果替换值为空，并且占位符确实独自占据一行，则移除整行
+    if (value === "" && lineRegex.test(content)) {
+      content = content.replace(lineRegex, "");
+    } else {
+      // 否则，只替换占位符本身
+      const inlineRegex = new RegExp(`{{ ${placeholder} }}`, "g");
+      content = content.replace(inlineRegex, value);
+    }
   }
 
-  content = content.replace(/{{ .* }}\n?/g, "");
-  fs.writeFileSync(targetPath, content);
+  // 清理所有未被替换的、且独自占据一行的占位符
+  return content.replace(/^\s*{{ .* }}\s*$\n?/gm, "");
 }
 
 module.exports = {

@@ -186,13 +186,13 @@ function setupRouter(projectPath, options) {
   const routerDir = path.join(projectPath, "src", "router");
   fs.mkdirSync(routerDir, { recursive: true });
 
-  const templateName = needsTypeScript ? "router.ts.tpl" : "router.js.tpl";
+  const templateName = needsTypeScript ? "router/router.ts.tpl" : "router/router.js.tpl";
   const targetFile = needsTypeScript ? "index.ts" : "index.js";
-  copyTemplate(templateName, path.join(routerDir, targetFile));
+  fs.writeFileSync(path.join(routerDir, targetFile), copyTemplate(templateName));
 
   const viewsDir = path.join(projectPath, "src", "views");
   fs.mkdirSync(viewsDir, { recursive: true });
-  copyTemplate("Home.vue.tpl", path.join(viewsDir, "Home.vue"));
+  fs.writeFileSync(path.join(viewsDir, "Home.vue"), copyTemplate("Home.vue.tpl"));
 
   const appVuePath = path.join(projectPath, "src", "App.vue");
   let appVueContent = fs.readFileSync(appVuePath, "utf-8");
@@ -224,17 +224,23 @@ function setupPinia(projectPath, options) {
 
   // 复制 Pinia 实例文件
   const piniaIndexTemplate = needsTypeScript
-    ? "store-index.ts.tpl"
-    : "store-index.js.tpl";
+    ? "store/store-index.ts.tpl"
+    : "store/store-index.js.tpl";
   const piniaIndexFile = needsTypeScript ? "index.ts" : "index.js";
-  copyTemplate(piniaIndexTemplate, path.join(storeDir, piniaIndexFile));
+  fs.writeFileSync(
+    path.join(storeDir, piniaIndexFile),
+    copyTemplate(piniaIndexTemplate)
+  );
 
   // 复制示例 store 文件
   const counterStoreTemplate = needsTypeScript
-    ? "store-counter.ts.tpl"
-    : "store-counter.js.tpl";
+    ? "store/store-counter.ts.tpl"
+    : "store/store-counter.js.tpl";
   const counterStoreFile = needsTypeScript ? "counter.ts" : "counter.js";
-  copyTemplate(counterStoreTemplate, path.join(storeDir, counterStoreFile));
+  fs.writeFileSync(
+    path.join(storeDir, counterStoreFile),
+    copyTemplate(counterStoreTemplate)
+  );
 
   return {
     dependencies: ["pinia"],
@@ -255,10 +261,12 @@ function setupEslint(projectPath, options) {
   const { needsTypeScript, needsUnoCSS } = options;
   const targetFile = needsTypeScript ? "eslint.config.ts" : "eslint.config.js";
 
-  copyTemplate("eslint.config.js.tpl", path.join(projectPath, targetFile), {
-    needsTypeScript: needsTypeScript,
+  const eslintConfigContent = copyTemplate("eslint.config.js.tpl", {
+    typeScriptConfig: needsTypeScript ? "typescript: true," : "",
     unoESLintConfig: needsUnoCSS ? "unocss: true," : "",
   });
+  fs.writeFileSync(path.join(projectPath, targetFile), eslintConfigContent);
+
   const devDependencies = ["eslint", "@antfu/eslint-config"];
   if (needsTypeScript) {
     devDependencies.push("jiti");
@@ -286,7 +294,10 @@ function setupEslint(projectPath, options) {
 function setupUnoCSS(projectPath, options) {
   const { needsTypeScript } = options;
   const targetFile = needsTypeScript ? "uno.config.ts" : "uno.config.js";
-  copyTemplate("uno.config.js.tpl", path.join(projectPath, targetFile));
+  fs.writeFileSync(
+    path.join(projectPath, targetFile),
+    copyTemplate("uno.config.js.tpl")
+  );
 
   const viteConfigFile = needsTypeScript ? "vite.config.ts" : "vite.config.js";
   let viteConfigContent = fs.readFileSync(
@@ -316,9 +327,9 @@ function setupUnoCSS(projectPath, options) {
  * @returns {object} 包含此功能所需依赖、开发依赖和脚本的对象。
  */
 function setupGitHooks(projectPath) {
-  copyTemplate(
-    "commitlint.config.js.tpl",
-    path.join(projectPath, "commitlint.config.js")
+  fs.writeFileSync(
+    path.join(projectPath, "commitlint.config.js"),
+    copyTemplate("commitlint.config.js.tpl")
   );
   return {
     dependencies: [],
@@ -346,57 +357,100 @@ function setupVSCode(projectPath, options) {
   const vscodeDir = path.join(projectPath, ".vscode");
   fs.mkdirSync(vscodeDir, { recursive: true });
 
-  copyTemplate("extensions.json.tpl", path.join(vscodeDir, "extensions.json"), {
-    eslintExtension: needsEslint ? "dbaeumer.vscode-eslint" : "",
-    unocssExtension: needsUnoCSS ? "antfu.unocss" : "",
+  const extensionsContent = copyTemplate("vscode/extensions.json.tpl", {
+    eslintExtension: needsEslint ? '"dbaeumer.vscode-eslint",' : "",
+    unocssExtension: needsUnoCSS ? '"antfu.unocss",' : "",
   });
+  fs.writeFileSync(path.join(vscodeDir, "extensions.json"), extensionsContent);
 
-  copyTemplate("settings.json.tpl", path.join(vscodeDir, "settings.json"));
+  fs.writeFileSync(
+    path.join(vscodeDir, "settings.json"),
+    copyTemplate("vscode/settings.json.tpl")
+  );
 }
 
 /**
- * 根据用户选项生成并写入 README.md 文件。
+ * 根据用户选项生成并写入 README.md 和 README.zh-CN.md 文件。
  * @param {string} projectPath 项目的绝对路径。
  * @param {object} options 用户的配置选项。
  */
 function generateAndWriteReadme(projectPath, options) {
   const {
+    projectName,
+    packageManager,
+    cssPreprocessor,
     needsTypeScript,
     needsRouter,
     needsPinia,
     needsEslint,
-    needsGitCommit,
-    cssPreprocessor,
     needsUnoCSS,
+    needsGitCommit,
   } = options;
-  let features = [];
-  if (needsTypeScript)
-    features.push(
-      `- **TypeScript**: 强类型 JavaScript，提升代码质量和开发效率。`
-    );
-  if (needsRouter)
-    features.push(`- **Vue Router**: 官方路由管理器，用于构建单页面应用。`);
-  if (needsPinia)
-    features.push(`- **Pinia**: 轻量级、类型安全的 Vue 状态管理库。`);
-  if (needsEslint) features.push(`- **ESLint**: 代码规范和风格检查工具...`);
-  if (cssPreprocessor !== "none")
-    features.push(`- **${cssPreprocessor}**: ${cssPreprocessor} 预处理器...`);
-  if (needsUnoCSS) features.push(`- **UnoCSS**: 即时按需原子化 CSS 引擎...`);
-  if (needsGitCommit)
-    features.push(
-      `- **Git Commit 规范**: 通过 Husky、lint-staged 和 Commitlint...`
-    );
 
-  copyTemplate("README.md.tpl", path.join(projectPath, "README.md"), {
-    projectName: options.projectName,
-    packageManager: options.packageManager,
-    features: features.join("\n"),
-    lintScript: needsEslint
-      ? `- \`${options.packageManager} run lint\`: run lint and auto fix code.`
-      : "",
-    routerDir: needsRouter ? `│   ├── router/       # Vue Router` : "",
-    piniaDir: needsPinia ? `│   ├── store/        # Pinia` : "",
-    viewsDir: needsRouter ? `│   ├── views/        # pages` : "",
+  const featureDefinitions = [
+    {
+      option: "packageManager",
+      check: (value) => value === "pnpm",
+      en: "- **pnpm**: Fast, disk space-efficient package manager.",
+      zh: "- **pnpm**: 快速、节省磁盘空间的包管理器。",
+    },
+    {
+      option: "needsTypeScript",
+      en: "- **TypeScript**: Strongly typed JavaScript for enhanced code quality and development efficiency.",
+      zh: "- **TypeScript**: 强类型 JavaScript，提升代码质量和开发效率。",
+    },
+    {
+      option: "needsRouter",
+      en: "- **Vue Router**: The official router for building Single-Page Applications.",
+      zh: "- **Vue Router**: 官方路由管理器，用于构建单页面应用。",
+    },
+    {
+      option: "needsPinia",
+      en: "- **Pinia**: A lightweight, type-safe state management library for Vue.",
+      zh: "- **Pinia**: 轻量级、类型安全的 Vue 状态管理库。",
+    },
+    {
+      option: "needsEslint",
+      en: "- **ESLint**: Tool for code linting and style checking...",
+      zh: "- **ESLint**: 代码规范和风格检查工具...",
+    },
+    {
+      option: "cssPreprocessor",
+      check: (value) => value !== "none",
+      en: `- **${cssPreprocessor}**: ${cssPreprocessor} pre-processor...`,
+      zh: `- **${cssPreprocessor}**: ${cssPreprocessor} 预处理器...`,
+    },
+    {
+      option: "needsUnoCSS",
+      en: "- **UnoCSS**: Instant on-demand atomic CSS engine...",
+      zh: "- **UnoCSS**: 即时按需原子化 CSS 引擎...",
+    },
+    {
+      option: "needsGitCommit",
+      en: "- **Git Commit Convention**: Using Husky, lint-staged, and Commitlint...",
+      zh: "- **Git Commit 规范**: 通过 Husky、lint-staged 和 Commitlint...",
+    },
+  ];
+
+  const activeFeatures = featureDefinitions.filter((feature) => {
+    const value = options[feature.option];
+    return feature.check ? feature.check(value) : value;
+  });
+
+  let featuresEn = "";
+  let featuresZh = "";
+
+  if (activeFeatures.length > 0) {
+    featuresEn = activeFeatures.map((f) => f.en).join("\n");
+    featuresZh = activeFeatures.map((f) => f.zh).join("\n");
+  } else {
+    featuresEn = "- **Basic Vue Setup**: A minimal Vue 3 project setup with Vite.";
+    featuresZh = "- **基础 Vue 环境**: 一个使用 Vite 构建的最小化 Vue 3 项目。";
+  }
+
+  const baseTplVars = {
+    projectName,
+    packageManager,
     mainFileExtension: needsTypeScript ? "ts" : "js",
     viteConfigExtension: needsTypeScript ? "ts" : "js",
     tsconfig: needsTypeScript
@@ -411,39 +465,67 @@ function generateAndWriteReadme(projectPath, options) {
     commitlintConfig: needsGitCommit
       ? `├── commitlint.config.js\n├── .husky/`
       : "",
-  });
+  };
 
-  // 生成中文 README
-  copyTemplate(
-    "README.zh-CN.md.tpl",
+  let qualityToolsEn = "";
+  let qualityToolsZh = "";
+
+  if (needsEslint || needsGitCommit) {
+    const replacements = { packageManager };
+    const eslintEn = needsEslint
+      ? copyTemplate("readme/eslint.en.md.tpl", replacements)
+      : "";
+    const eslintZh = needsEslint
+      ? copyTemplate("readme/eslint.zh-CN.md.tpl", replacements)
+      : "";
+    const gitHooksEn = needsGitCommit
+      ? copyTemplate("readme/git-hooks.en.md.tpl", replacements)
+      : "";
+    const gitHooksZh = needsGitCommit
+      ? copyTemplate("readme/git-hooks.zh-CN.md.tpl", replacements)
+      : "";
+
+    qualityToolsEn = copyTemplate("readme/quality-tools.en.md.tpl", {
+      eslintSection: eslintEn,
+      gitHooksSection: gitHooksEn,
+    });
+    qualityToolsZh = copyTemplate("readme/quality-tools.zh-CN.md.tpl", {
+      eslintSection: eslintZh,
+      gitHooksSection: gitHooksZh,
+    });
+  }
+
+  const enTplVars = {
+    ...baseTplVars,
+    features: featuresEn,
+    lintScript: needsEslint
+      ? `- \`${packageManager} run lint\`: run lint and auto fix code.`
+      : "",
+    routerDir: needsRouter ? `│   ├── router/       # Vue Router` : "",
+    piniaDir: needsPinia ? `│   ├── store/        # Pinia` : "",
+    viewsDir: needsRouter ? `│   ├── views/        # pages` : "",
+    codeQualityTools: qualityToolsEn,
+  };
+
+  const zhTplVars = {
+    ...baseTplVars,
+    features: featuresZh,
+    lintScript: needsEslint
+      ? `- \`${packageManager} run lint\`: 运行 ESLint 检查并自动修复代码中的问题。`
+      : "",
+    routerDir: needsRouter ? `│   ├── router/       # Vue Router 路由配置` : "",
+    piniaDir: needsPinia ? `│   ├── store/        # Pinia 状态管理模块` : "",
+    viewsDir: needsRouter ? `│   ├── views/        # 页面级 Vue 组件` : "",
+    codeQualityTools: qualityToolsZh,
+  };
+
+  fs.writeFileSync(
+    path.join(projectPath, "README.md"),
+    copyTemplate("readme/README.md.tpl", enTplVars)
+  );
+  fs.writeFileSync(
     path.join(projectPath, "README.zh-CN.md"),
-    {
-      projectName: options.projectName,
-      packageManager: options.packageManager,
-      features: features.join("\n"),
-      lintScript: needsEslint
-        ? `- \`${options.packageManager} run lint\`: 运行 ESLint 检查并自动修复代码中的问题。`
-        : "",
-      routerDir: needsRouter
-        ? `│   ├── router/       # Vue Router 路由配置`
-        : "",
-      piniaDir: needsPinia ? `│   ├── store/        # Pinia 状态管理模块` : "",
-      viewsDir: needsRouter ? `│   ├── views/        # 页面级 Vue 组件` : "",
-      mainFileExtension: needsTypeScript ? "ts" : "js",
-      viteConfigExtension: needsTypeScript ? "ts" : "js",
-      tsconfig: needsTypeScript
-        ? `├── tsconfig.json\n├── tsconfig.node.json`
-        : "",
-      eslintConfig: needsEslint
-        ? `├── eslint.config.${needsTypeScript ? "ts" : "js"}`
-        : "",
-      unocssConfig: needsUnoCSS
-        ? `├── uno.config.${needsTypeScript ? "ts" : "js"}`
-        : "",
-      commitlintConfig: needsGitCommit
-        ? `├── commitlint.config.js\n├── .husky/`
-        : "",
-    }
+    copyTemplate("readme/README.zh-CN.md.tpl", zhTplVars)
   );
 }
 
