@@ -5,11 +5,11 @@ To use this CLI tool, ensure you have [Node.js](https://nodejs.org/) (LTS recomm
 1.  **Install the CLI (Globally - Recommended for frequent use)**
 
     ```bash
-    npm install -g @xiaozhou/create-vue-vite-app
+    npm install -g @qinmoon/create-vue-vite-app
     # or
-    pnpm install -g @xiaozhou/create-vue-vite-app
+    pnpm install -g @qinmoon/create-vue-vite-app
     # or
-    yarn global add @xiaozhou/create-vue-vite-app
+    yarn global add @qinmoon/create-vue-vite-app
     ```
 
 2.  **Create a New Project**
@@ -17,9 +17,9 @@ To use this CLI tool, ensure you have [Node.js](https://nodejs.org/) (LTS recomm
     ```bash
     create-vue
     # or use npx/pnpx for one-time use without global installation
-    npx @xiaozhou/create-vue-vite-app
+    npx @qinmoon/create-vue-vite-app
     # or
-    pnpx @xiaozhou/create-vue-vite-app
+    pnpx @qinmoon/create-vue-vite-app
     ```
 
     Follow the prompts to configure your new project.

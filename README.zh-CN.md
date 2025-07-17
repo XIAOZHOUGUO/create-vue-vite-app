@@ -5,11 +5,11 @@
 1.  **全局安装 CLI (推荐频繁使用)**
 
     ```bash
-    npm install -g @xiaozhou/create-vue-vite-app
+    npm install -g @qinmoon/create-vue-vite-app
     # 或
-    pnpm install -g @xiaozhou/create-vue-vite-app
+    pnpm install -g @qinmoon/create-vue-vite-app
     # 或
-    yarn global add @xiaozhou/create-vue-vite-app
+    yarn global add @qinmoon/create-vue-vite-app
     ```
 
 2.  **创建新项目**
@@ -17,9 +17,9 @@
     ```bash
     create-vue
     # 或使用 npx/pnpx 进行一次性使用，无需全局安装
-    npx @xiaozhou/create-vue-vite-app
+    npx @qinmoon/create-vue-vite-app
     # 或
-    pnpx @xiaozhou/create-vue-vite-app
+    pnpx @qinmoon/create-vue-vite-app
     ```
 
     按照提示配置您的新项目。
