@@ -89,12 +89,12 @@ export function writeJsonFile(filePath: string, data: unknown): void {
  * @returns 键已排序的新对象。
  */
 export function sortObjectKeys<T extends object>(obj: T): T {
-    if (!obj) return {} as T;
-    const sortedKeys = Object.keys(obj).sort() as Array<keyof T>;
-    return sortedKeys.reduce((acc, key) => {
-        acc[key] = obj[key];
-        return acc;
-    }, {} as T);
+  if (!obj) return {} as T;
+  const sortedKeys = Object.keys(obj).sort() as Array<keyof T>;
+  return sortedKeys.reduce((acc, key) => {
+    acc[key] = obj[key];
+    return acc;
+  }, {} as T);
 }
 
 
