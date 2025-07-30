@@ -3,16 +3,18 @@
   "version": "1.1.0",
   "description": "A CLI tool to quickly scaffold new Vue 3 projects with Vite, offering options for TypeScript, Vue Router, Pinia, ESLint, UnoCSS, and Git commit hooks.",
   "bin": {
-    "create-vue": "./index.js"
+    "create-vue": "./dist/index.js"
   },
-  "main": "index.js",
+  "main": "./dist/index.js",
   "homepage": "https://github.com/XIAOZHOUGUO/create-vue-vite-app",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/XIAOZHOUGUO/create-vue-vite-app.git"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "cli",
@@ -30,14 +32,19 @@
   "author": "xiaozhou <guoxiaozhou_ok@163.com>",
   "license": "MIT",
   "files": [
-    "index.js",
-    "utils.js",
-    "templates/",
-    "package.json"
+    "dist/",
+    "templates/"
   ],
+
   "dependencies": {
     "kolorist": "^1.8.0",
     "minimist": "^1.2.8",
     "prompts": "^2.4.2"
+  },
+  "devDependencies": {
+    "@types/minimist": "^1.2.5",
+    "@types/node": "^24.1.0",
+    "@types/prompts": "^2.4.9",
+    "typescript": "^5.8.3"
   }
 }
