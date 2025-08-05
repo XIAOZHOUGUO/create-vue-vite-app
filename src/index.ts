@@ -1,10 +1,14 @@
 #!/usr/bin/env node
 
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 import prompts from 'prompts';
 import { red, green, bold } from 'kolorist';
+import { Command } from 'commander';
+
+const program = new Command();
 import {
+  validateProjectName,
   exec,
   readJsonFile,
   writeJsonFile,
@@ -37,6 +41,8 @@ interface UserOptions {
 interface PackageJson {
   name: string;
   version: string;
+  description: string;
+  bin: Record<string, string>;
   private?: boolean;
   scripts?: Record<string, string>;
   dependencies?: Record<string, string>;
@@ -72,40 +78,43 @@ interface FeatureResult {
  * 提示用户输入项目名称和各项配置选项。
  * @returns 一个 Promise，解析为包含用户所选项目名称和配置选项的对象。
  */
-async function promptUserOptions(): Promise<UserOptions> {
-  // ... (实现保持不变，但返回值类型已明确)
-  const { projectName } = await prompts({
-    type: 'text',
-    name: 'projectName',
-    message: '项目名称:',
-    initial: 'vite-demo',
-    validate: (name: string) => {
-      if (!name) return '项目名称不能为空。';
-      const targetPath = path.join(process.cwd(), name);
-      if (fs.existsSync(targetPath)) {
-        return `目录 ${targetPath} 已存在，请选择其他名称。`;
+async function promptUserOptions(name?: string, template?: string): Promise<UserOptions> {
+  const { projectName } = name
+    ? await new Promise<Pick<UserOptions, 'projectName'>>((resolve, reject) => {
+      const result = validateProjectName(name);
+      if (result !== true) {
+        reject(result);
       }
-      return true;
-    },
+      resolve({ projectName: name });
+    })
+    : await prompts({
+      type: 'text',
+      name: 'projectName',
+      message: '项目名称:',
+      initial: 'vite-demo',
+      validate: (name: string) => {
+        return validateProjectName(name);
+      },
+    });
+  const { packageManager } = await prompts({
+    type: 'select',
+    name: 'packageManager',
+    message: '选择包管理器:',
+    choices: [
+      { title: 'pnpm', value: 'pnpm' },
+      { title: 'npm', value: 'npm' },
+    ],
+    initial: 0,
   });
-
-  const options: Omit<UserOptions, 'projectName'> = await prompts([
-    {
-      type: 'select',
-      name: 'packageManager',
-      message: '选择包管理器:',
-      choices: [
-        { title: 'pnpm', value: 'pnpm' },
-        { title: 'npm', value: 'npm' },
-      ],
-      initial: 0,
-    },
-    {
+  const { needsTypeScript } = template
+    ? { needsTypeScript: template === 'vue-ts' }
+    : await prompts({
       type: 'confirm',
       name: 'needsTypeScript',
       message: '是否需要 TypeScript?',
       initial: true,
-    },
+    });
+  const options: Omit<UserOptions, 'projectName' | 'packageManager' | 'needsTypeScript'> = await prompts([
     {
       type: 'confirm',
       name: 'needsRouter',
@@ -149,7 +158,7 @@ async function promptUserOptions(): Promise<UserOptions> {
     },
   ]);
 
-  return { projectName, ...options };
+  return { projectName, packageManager, needsTypeScript, ...options };
 }
 
 /**
@@ -214,7 +223,6 @@ function updateMainFile(projectPath: string, options: UserOptions, importsToAdd:
 // =================================================================
 
 function setupRouter(projectPath: string, options: UserOptions): FeatureResult {
-  // ... (实现不变)
   const { needsTypeScript } = options;
   const routerDir = path.join(projectPath, 'src', 'router');
   fs.mkdirSync(routerDir, { recursive: true });
@@ -229,9 +237,10 @@ function setupRouter(projectPath: string, options: UserOptions): FeatureResult {
 
   const appVuePath = path.join(projectPath, 'src', 'App.vue');
   let appVueContent = fs.readFileSync(appVuePath, 'utf-8');
-  appVueContent = appVueContent
-    .replace(/<HelloWorld.*\/>/, '<router-view />')
-    .replace(/import HelloWorld.*\n/, '');
+  appVueContent =
+    appVueContent
+      .replace(/<HelloWorld.*\/>/, '<router-view />')
+      .replace(/import HelloWorld.*\n/, '');
   fs.writeFileSync(appVuePath, appVueContent);
 
   return {
@@ -243,7 +252,6 @@ function setupRouter(projectPath: string, options: UserOptions): FeatureResult {
 }
 
 function setupPinia(projectPath: string, options: UserOptions): FeatureResult {
-  // ... (实现不变)
   const { needsTypeScript } = options;
   const storeDir = path.join(projectPath, 'src', 'store');
   fs.mkdirSync(storeDir, { recursive: true });
@@ -342,7 +350,6 @@ function setupVSCode(projectPath: string, options: UserOptions): void {
 }
 
 function generateAndWriteReadme(projectPath: string, options: UserOptions): void {
-  // ... (实现不变)
   const {
     projectName,
     packageManager,
@@ -528,7 +535,7 @@ function runPostInstallTasks(projectPath: string, options: UserOptions): void {
  * @param packageManager 使用的包管理器名称。
  */
 function logFinalInstructions(projectName: string, packageManager: 'pnpm' | 'npm'): void {
-  console.log(bold(green(`\n🎉 项目创建成功!`)));
+  console.log(bold(green('\n🎉 项目创建成功!')));
   console.log(`开始使用, 请运行:\n`);
   console.log(`  cd ${projectName}`);
   console.log(`  ${packageManager} dev\n`);
@@ -537,8 +544,8 @@ function logFinalInstructions(projectName: string, packageManager: 'pnpm' | 'npm
 /**
  * 主函数，负责编排整个项目创建流程。
  */
-async function main(): Promise<void> {
-  const options = await promptUserOptions();
+async function main(name?: string, template?: string): Promise<void> {
+  const options = await promptUserOptions(name, template);
   const { projectName, packageManager } = options;
 
   const projectPath = createProject(projectName);
@@ -588,8 +595,20 @@ async function main(): Promise<void> {
   logFinalInstructions(projectName, packageManager);
 }
 
-main().catch((e: unknown) => {
-  console.error(red('✖ 发生未知错误。'));
-  console.error(red((e as Error).stack || (e as Error).message || String(e)));
-  process.exit(1);
-});
+const pkg: PackageJson = readJsonFile(path.join(process.cwd(), './package.json'));
+program
+  .name(Object.keys(pkg.bin)[0])
+  .description(pkg.description)
+  .version(pkg.version)
+  .option('-n, --name [name]', 'generated directory name')
+  .option('-t, --template [template]', 'used templateName: vue / vue-ts')
+  .action(async ({ name, template }) => {
+    try {
+      await main(name, template);
+    } catch (e: unknown) {
+      console.error(red((e as Error).stack || (e as Error).message || String(e)));
+      process.exit(1);
+    }
+  });
+
+program.parse(process.argv);

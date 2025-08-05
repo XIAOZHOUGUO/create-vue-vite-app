@@ -1,9 +1,26 @@
 
 
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 import { red } from 'kolorist';
+import { parse } from 'jsonc-parser'
 import { execSync, ExecSyncOptions } from 'child_process';
+
+/**
+ * 验证项目名称是否有效。
+ * @param name 项目名称。
+ * @returns 如果项目名称有效返回 true，否则抛出相应信息。
+ */
+export function validateProjectName(name: string): boolean | string {
+  if (!name) {
+    return '项目名称不能为空';
+  }
+  const targetPath = path.join(process.cwd(), name);
+  if (fs.existsSync(targetPath)) {
+    return `目录 ${targetPath} 已存在，请选择其他名称。`;
+  }
+  return true;
+}
 
 /**
  * 执行一个 shell 命令，并包含错误处理和日志记录。
@@ -32,11 +49,8 @@ export function exec(command: string, options: ExecSyncOptions = {}, throwOnErro
   }
 }
 
-// 预编译正则表达式提升性能
-const JSON_COMMENTS_REGEX = /\/\/.*|\/\*[\s\S]*?\*\//g;
-
 /**
- * 读取并解析一个 JSON 文件，会先移除文件中的单行和多行注释。
+ * 读取并解析一个 JSON 文件，支持（并忽略）注释。
  * @param filePath JSON 文件的路径。
  * @returns 解析后的 JSON 对象。
  * @throws 当文件不存在或解析失败时抛出异常。
@@ -52,8 +66,7 @@ export function readJsonFile<T>(filePath: string): T {
 
   try {
     const content = fs.readFileSync(filePath, 'utf-8');
-    const contentWithoutComments = content.replace(JSON_COMMENTS_REGEX, '');
-    return JSON.parse(contentWithoutComments) as T;
+    return parse(content) as T;
   } catch (e: unknown) {
     throw new Error(`解析 JSON 文件失败 ${filePath}: ${(e as Error).message}`);
   }

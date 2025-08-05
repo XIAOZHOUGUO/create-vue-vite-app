@@ -13,7 +13,6 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "echo \"Error: no test specified\" && exit 1",
     "prepublishOnly": "npm run build"
   },
   "keywords": [
@@ -36,12 +35,13 @@
     "templates/"
   ],
   "dependencies": {
+    "commander": "^14.0.0",
+    "jsonc-parser": "^3.3.1",
     "kolorist": "^1.8.0",
-    "minimist": "^1.2.8",
     "prompts": "^2.4.2"
   },
   "devDependencies": {
-    "@types/minimist": "^1.2.5",
+    "@types/commander": "^2.12.5",
     "@types/node": "^24.1.0",
     "@types/prompts": "^2.4.9",
     "typescript": "^5.8.3"
