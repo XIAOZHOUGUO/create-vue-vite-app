@@ -2,6 +2,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import prompts from 'prompts';
 import { red, green, bold } from 'kolorist';
 import { Command } from 'commander';
@@ -595,7 +596,8 @@ async function main(name?: string, template?: string): Promise<void> {
   logFinalInstructions(projectName, packageManager);
 }
 
-const pkg: PackageJson = readJsonFile(path.join(process.cwd(), './package.json'));
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const pkg: PackageJson = readJsonFile(path.join(__dirname, '../package.json'));
 program
   .name(Object.keys(pkg.bin)[0])
   .description(pkg.description)

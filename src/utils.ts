@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { red } from 'kolorist';
 import { parse } from 'jsonc-parser'
+import { fileURLToPath } from 'node:url';
 import { execSync, ExecSyncOptions } from 'child_process';
 
 /**
@@ -126,6 +127,7 @@ export function copyTemplate(templateName: string, replacements: Record<string, 
     throw new Error('模板文件名不能为空且必须是字符串');
   }
 
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
   const templatePath = path.join(__dirname, '../templates', templateName);
 
   if (!fs.existsSync(templatePath)) {

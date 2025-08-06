@@ -1,7 +1,7 @@
 {
   "recommendations": [
     "Vue.volar",
-    "{{ eslintExtension }}",
-    "{{ unocssExtension }}"
+    {{ eslintExtension }}
+    {{ unocssExtension }}
   ]
 }

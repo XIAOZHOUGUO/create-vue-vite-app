@@ -30,6 +30,7 @@
   ],
   "author": "xiaozhou <guoxiaozhou_ok@163.com>",
   "license": "MIT",
+  "type": "module",
   "files": [
     "dist/",
     "templates/"
