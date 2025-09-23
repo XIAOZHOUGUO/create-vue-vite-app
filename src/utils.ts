@@ -1,11 +1,12 @@
-
-
-import fs from 'node:fs';
-import path from 'node:path';
-import { red } from 'kolorist';
+import type { Buffer } from 'node:buffer'
+import type { ExecSyncOptions } from 'node:child_process'
+import { execSync } from 'node:child_process'
+import fs from 'node:fs'
+import path from 'node:path'
+import process from 'node:process'
+import { fileURLToPath } from 'node:url'
 import { parse } from 'jsonc-parser'
-import { fileURLToPath } from 'node:url';
-import { execSync, ExecSyncOptions } from 'child_process';
+import { red } from 'kolorist'
 
 /**
  * 验证项目名称是否有效。
@@ -14,13 +15,13 @@ import { execSync, ExecSyncOptions } from 'child_process';
  */
 export function validateProjectName(name: string): boolean | string {
   if (!name) {
-    return '项目名称不能为空';
+    return '项目名称不能为空'
   }
-  const targetPath = path.join(process.cwd(), name);
+  const targetPath = path.join(process.cwd(), name)
   if (fs.existsSync(targetPath)) {
-    return `目录 ${targetPath} 已存在，请选择其他名称。`;
+    return `目录 ${targetPath} 已存在，请选择其他名称。`
   }
-  return true;
+  return true
 }
 
 /**
@@ -32,21 +33,22 @@ export function validateProjectName(name: string): boolean | string {
  */
 export function exec(command: string, options: ExecSyncOptions = {}, throwOnError = false): Buffer | string {
   if (!command || typeof command !== 'string') {
-    throw new Error('命令不能为空且必须是字符串');
+    throw new Error('命令不能为空且必须是字符串')
   }
 
   try {
-    return execSync(command, { stdio: 'inherit', ...options });
-  } catch (e: unknown) {
-    const errorMsg = `命令执行失败: ${command}`;
-    console.error(red(`✖ ${errorMsg}`));
+    return execSync(command, { stdio: 'inherit', ...options })
+  }
+  catch (e: unknown) {
+    const errorMsg = `命令执行失败: ${command}`
+    console.error(red(`✖ ${errorMsg}`))
 
     if (throwOnError) {
-      throw new Error(`${errorMsg}\n${(e as Error).message}`);
+      throw new Error(`${errorMsg}\n${(e as Error).message}`)
     }
 
-    console.error(red((e as Error).message || String(e)));
-    process.exit(1);
+    console.error(red((e as Error).message || String(e)))
+    process.exit(1)
   }
 }
 
@@ -58,18 +60,19 @@ export function exec(command: string, options: ExecSyncOptions = {}, throwOnErro
  */
 export function readJsonFile<T>(filePath: string): T {
   if (!filePath || typeof filePath !== 'string') {
-    throw new Error('文件路径不能为空且必须是字符串');
+    throw new Error('文件路径不能为空且必须是字符串')
   }
 
   if (!fs.existsSync(filePath)) {
-    throw new Error(`文件不存在: ${filePath}`);
+    throw new Error(`文件不存在: ${filePath}`)
   }
 
   try {
-    const content = fs.readFileSync(filePath, 'utf-8');
-    return parse(content) as T;
-  } catch (e: unknown) {
-    throw new Error(`解析 JSON 文件失败 ${filePath}: ${(e as Error).message}`);
+    const content = fs.readFileSync(filePath, 'utf-8')
+    return parse(content) as T
+  }
+  catch (e: unknown) {
+    throw new Error(`解析 JSON 文件失败 ${filePath}: ${(e as Error).message}`)
   }
 }
 
@@ -81,19 +84,20 @@ export function readJsonFile<T>(filePath: string): T {
  */
 export function writeJsonFile(filePath: string, data: unknown): void {
   if (!filePath || typeof filePath !== 'string') {
-    throw new Error('文件路径不能为空且必须是字符串');
+    throw new Error('文件路径不能为空且必须是字符串')
   }
 
   if (data === undefined) {
-    throw new Error('要写入的数据不能为 undefined');
+    throw new Error('要写入的数据不能为 undefined')
   }
 
   try {
     // 使用 2 个空格缩进，并确保末尾有换行符
-    const jsonString = JSON.stringify(data, null, 2) + '\n';
-    fs.writeFileSync(filePath, jsonString);
-  } catch (e: unknown) {
-    throw new Error(`写入 JSON 文件失败 ${filePath}: ${(e as Error).message}`);
+    const jsonString = `${JSON.stringify(data, null, 2)}\n`
+    fs.writeFileSync(filePath, jsonString)
+  }
+  catch (e: unknown) {
+    throw new Error(`写入 JSON 文件失败 ${filePath}: ${(e as Error).message}`)
   }
 }
 
@@ -103,17 +107,17 @@ export function writeJsonFile(filePath: string, data: unknown): void {
  * @returns 键已排序的新对象。
  */
 export function sortObjectKeys<T extends object>(obj: T): T {
-  if (!obj) return {} as T;
-  const sortedKeys = Object.keys(obj).sort() as Array<keyof T>;
+  if (!obj)
+    return {} as T
+  const sortedKeys = Object.keys(obj).sort() as Array<keyof T>
   return sortedKeys.reduce((acc, key) => {
-    acc[key] = obj[key];
-    return acc;
-  }, {} as T);
+    acc[key] = obj[key]
+    return acc
+  }, {} as T)
 }
 
-
 // 预编译模板正则表达式提升性能
-const REMAINING_PLACEHOLDERS_REGEX = /^\s*{{ .* }}\s*$\n?/gm;
+const REMAINING_PLACEHOLDERS_REGEX = /^\s*\{\{ .* \}\}\s*$\n?/gm
 
 /**
  * 读取并处理一个模板文件，返回填充了内容的字符串。
@@ -124,40 +128,42 @@ const REMAINING_PLACEHOLDERS_REGEX = /^\s*{{ .* }}\s*$\n?/gm;
  */
 export function copyTemplate(templateName: string, replacements: Record<string, string> = {}): string {
   if (!templateName || typeof templateName !== 'string') {
-    throw new Error('模板文件名不能为空且必须是字符串');
+    throw new Error('模板文件名不能为空且必须是字符串')
   }
 
-  const __dirname = path.dirname(fileURLToPath(import.meta.url));
-  const templatePath = path.join(__dirname, '../templates', templateName);
+  const __dirname = path.dirname(fileURLToPath(import.meta.url))
+  const templatePath = path.join(__dirname, '../templates', templateName)
 
   if (!fs.existsSync(templatePath)) {
-    throw new Error(`模板文件不存在: ${templatePath}`);
+    throw new Error(`模板文件不存在: ${templatePath}`)
   }
 
-  let content: string;
+  let content: string
   try {
-    content = fs.readFileSync(templatePath, 'utf-8');
-  } catch (e: unknown) {
-    throw new Error(`读取模板文件失败 ${templatePath}: ${(e as Error).message}`);
+    content = fs.readFileSync(templatePath, 'utf-8')
+  }
+  catch (e: unknown) {
+    throw new Error(`读取模板文件失败 ${templatePath}: ${(e as Error).message}`)
   }
 
   // 优化后的占位符替换逻辑
   for (const [placeholder, value] of Object.entries(replacements)) {
-    const escapedPlaceholder = placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const escapedPlaceholder = placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
     // 为独自占据一行的占位符创建正则表达式
-    const lineRegex = new RegExp(`^\\s*{{ ${escapedPlaceholder} }}\\s*$\n?`, 'gm');
+    const lineRegex = new RegExp(`^\\s*{{ ${escapedPlaceholder} }}\\s*$\n?`, 'gm')
 
     // 如果替换值为空字符串，并且占位符确实独自占据一行，则移除整行
     if (value === '' && lineRegex.test(content)) {
-      content = content.replace(lineRegex, '');
-    } else {
+      content = content.replace(lineRegex, '')
+    }
+    else {
       // 否则，只替换占位符本身
-      const inlineRegex = new RegExp(`{{ ${escapedPlaceholder} }}`, 'g');
-      content = content.replace(inlineRegex, String(value));
+      const inlineRegex = new RegExp(`{{ ${escapedPlaceholder} }}`, 'g')
+      content = content.replace(inlineRegex, String(value))
     }
   }
 
   // 清理所有未被替换的、且独自占据一行的占位符
-  return content.replace(REMAINING_PLACEHOLDERS_REGEX, '');
+  return content.replace(REMAINING_PLACEHOLDERS_REGEX, '')
 }
