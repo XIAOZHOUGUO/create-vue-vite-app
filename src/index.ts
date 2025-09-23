@@ -37,6 +37,16 @@ interface UserOptions {
 }
 
 /**
+ * 排除掉项目名、包管理工具和ts后的用户选择的配置项
+ */
+type RestOptions = Omit<UserOptions, 'projectName' | 'packageManager' | 'needsTypeScript'>
+
+/**
+ * 最后一个配置前的的用户选择的配置项
+ */
+type LastTypeValues = Omit<RestOptions, 'needsGitCommit'>
+
+/**
  * package.json 文件的结构
  */
 interface PackageJson {
@@ -115,7 +125,7 @@ async function promptUserOptions(name?: string, template?: string): Promise<User
       message: '是否需要 TypeScript?',
       initial: true,
     });
-  const options: Omit<UserOptions, 'projectName' | 'packageManager' | 'needsTypeScript'> = await prompts([
+  const options: RestOptions = await prompts([
     {
       type: 'confirm',
       name: 'needsRouter',
@@ -152,7 +162,7 @@ async function promptUserOptions(name?: string, template?: string): Promise<User
       initial: true,
     },
     {
-      type: 'confirm',
+      type: (values: LastTypeValues) => values.needsEslint ? 'confirm' : null,
       name: 'needsGitCommit',
       message: '是否需要 Git 提交规范 (commit hooks)?',
       initial: true,
@@ -333,7 +343,7 @@ function setupGitHooks(projectPath: string): FeatureResult {
       '@commitlint/config-conventional',
     ],
     scripts: { cz: 'cz' },
-    'lint-staged': { '*.{js,ts,vue}': 'eslint --fix' },
+    'lint-staged': { '*.{js,ts,vue}': 'npx eslint --fix' },
   };
 }
 
@@ -516,15 +526,16 @@ function runPostInstallTasks(projectPath: string, options: UserOptions): void {
     exec('npx husky init', { cwd: projectPath });
     fs.writeFileSync(path.join(projectPath, '.husky', 'pre-commit'), `npx lint-staged`);
     fs.writeFileSync(path.join(projectPath, '.husky', 'commit-msg'), `npx commitlint --edit "$1"`);
-    exec(`chmod +x ${path.join(projectPath, '.husky', 'pre-commit')}`, { cwd: projectPath });
-    exec(`chmod +x ${path.join(projectPath, '.husky', 'commit-msg')}`, { cwd: projectPath });
 
-    console.log(green('正在初始化 Commitizen...'));
-    const commitizenInitCommand =
-      packageManager === 'npm'
-        ? 'npm install -D commitizen cz-conventional-changelog && npx commitizen init cz-conventional-changelog --save-dev --save-exact'
-        : `pnpm add -D commitizen cz-conventional-changelog && pnpm commitizen init cz-conventional-changelog --pnpm --save-dev --save-exact`;
-    exec(commitizenInitCommand, { cwd: projectPath });
+    console.log(green('正在配置 Commitizen...'));
+    const pkgPath = path.join(projectPath, 'package.json');
+    const pkg = readJsonFile<PackageJson>(pkgPath);
+    pkg.config = {
+      commitizen: {
+        path: 'cz-conventional-changelog'
+      }
+    };
+    writeJsonFile(pkgPath, pkg);
 
     exec(`${packageManager} run prepare`, { cwd: projectPath });
   }
