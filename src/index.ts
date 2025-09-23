@@ -6,6 +6,7 @@ import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { Command } from 'commander'
 import { bold, green, red } from 'kolorist'
+import ora from 'ora'
 import prompts from 'prompts'
 import {
   copyTemplate,
@@ -43,11 +44,6 @@ interface UserOptions {
 type RestOptions = Omit<UserOptions, 'projectName' | 'packageManager' | 'needsTypeScript'>
 
 /**
- * 最后一个配置前的的用户选择的配置项
- */
-type LastTypeValues = Omit<RestOptions, 'needsGitCommit'>
-
-/**
  * package.json 文件的结构
  */
 interface PackageJson {
@@ -80,6 +76,14 @@ interface FeatureResult {
   importsToAdd?: string[]
   usesToAdd?: string[]
   ['lint-staged']?: Record<string, string>
+}
+/**
+ * 命令行参数类型
+ */
+interface OptionsArguments {
+  name?: string
+  template?: 'vue' | 'vue-ts'
+  useRolldown?: boolean
 }
 
 // =================================================================
@@ -163,7 +167,7 @@ async function promptUserOptions(name?: string, template?: string): Promise<User
       initial: true,
     },
     {
-      type: (values: LastTypeValues) => values.needsEslint ? 'confirm' : null,
+      type: (prev: unknown, values: { needsEslint: boolean }) => values.needsEslint ? 'confirm' : null,
       name: 'needsGitCommit',
       message: '是否需要 Git 提交规范 (commit hooks)?',
       initial: true,
@@ -189,16 +193,23 @@ function createProject(projectName: string): string {
  * @param projectPath 项目的绝对路径。
  * @param options 用户的配置选项。
  */
-function scaffoldVite(projectPath: string, options: UserOptions): void {
+function scaffoldVite(projectPath: string, options: UserOptions, useRolldown?: boolean): void {
   const { packageManager, needsTypeScript } = options
   const template = needsTypeScript ? 'vue-ts' : 'vue'
   const command
     = packageManager === 'pnpm'
-      ? `pnpm create vite . --template ${template}`
-      : `npm create vite@latest . --template ${template}`
+      ? `pnpm create vite . --template ${template} --rolldown ${useRolldown} --immediate false`
+      : `npm create vite@latest . --template ${template} --rolldown ${useRolldown} --immediate false`
 
-  console.log(green('正在使用 Vite 构建项目脚手架...'))
-  exec(command, { cwd: projectPath })
+  const spinner = ora('正在使用 Vite 构建项目脚手架...').start()
+  try {
+    exec(command, { cwd: projectPath, stdio: 'ignore' }, true)
+    spinner.succeed('Vite 项目脚手架构建成功')
+  }
+  catch (e) {
+    spinner.fail('Vite 项目脚手架构建失败')
+    throw e
+  }
 }
 
 /**
@@ -489,25 +500,32 @@ function updatePackageJson(projectPath: string, updates: Partial<FeatureResult>)
  * @param deps 需要安装的生产依赖包名数组。
  * @param devDeps 需要安装的开发依赖包名数组。
  */
-function installDependencies(projectPath: string, options: UserOptions, deps: string[], devDeps: string[]): void {
-  console.log(green('\n正在安装依赖... 请稍候。'))
-  const { packageManager } = options
+async function installDependencies(projectPath: string, options: UserOptions, deps: string[], devDeps: string[]): Promise<void> {
+  const spinner = ora('正在解析和安装依赖... 请稍候。').start()
+  try {
+    const { packageManager } = options
 
-  if (packageManager === 'pnpm') {
-    devDeps.push('pnpm')
+    if (packageManager === 'pnpm') {
+      devDeps.push('pnpm')
+    }
+
+    const pkgPath = path.join(projectPath, 'package.json')
+    const pkg = readJsonFile<PackageJson>(pkgPath)
+
+    pkg.dependencies = deps.reduce((acc, dep) => ({ ...acc, [dep]: 'latest' }), pkg.dependencies || {})
+    pkg.devDependencies = devDeps.reduce((acc, dep) => ({ ...acc, [dep]: 'latest' }), pkg.devDependencies || {})
+
+    pkg.dependencies = sortObjectKeys(pkg.dependencies)
+    pkg.devDependencies = sortObjectKeys(pkg.devDependencies)
+
+    writeJsonFile(pkgPath, pkg)
+    exec(`${packageManager} install`, { cwd: projectPath, stdio: 'ignore' }, true)
+    spinner.succeed('依赖安装成功')
   }
-
-  const pkgPath = path.join(projectPath, 'package.json')
-  const pkg = readJsonFile<PackageJson>(pkgPath)
-
-  pkg.dependencies = deps.reduce((acc, dep) => ({ ...acc, [dep]: 'latest' }), pkg.dependencies || {})
-  pkg.devDependencies = devDeps.reduce((acc, dep) => ({ ...acc, [dep]: 'latest' }), pkg.devDependencies || {})
-
-  pkg.dependencies = sortObjectKeys(pkg.dependencies)
-  pkg.devDependencies = sortObjectKeys(pkg.devDependencies)
-
-  writeJsonFile(pkgPath, pkg)
-  exec(`${packageManager} install`, { cwd: projectPath })
+  catch (e) {
+    spinner.fail('依赖安装失败')
+    throw e
+  }
 }
 
 /**
@@ -519,28 +537,40 @@ function runPostInstallTasks(projectPath: string, options: UserOptions): void {
   const { packageManager } = options
 
   if (options.needsEslint) {
-    console.log(green('正在使用 ESLint 格式化项目...'))
-    exec('npx eslint . --fix', { cwd: projectPath })
+    const spinner = ora('正在使用 ESLint 格式化项目...').start()
+    try {
+      exec('npx eslint . --fix', { cwd: projectPath, stdio: 'ignore' }, true)
+      spinner.succeed('ESLint 格式化成功')
+    }
+    catch {
+      spinner.fail('ESLint 格式化失败')
+    }
   }
 
   if (options.needsGitCommit) {
-    console.log(green('正在初始化 Git 仓库和钩子...'))
-    exec('git init -b main', { cwd: projectPath })
-    exec('npx husky init', { cwd: projectPath })
-    fs.writeFileSync(path.join(projectPath, '.husky', 'pre-commit'), `npx lint-staged`)
-    fs.writeFileSync(path.join(projectPath, '.husky', 'commit-msg'), `npx commitlint --edit "$1"`)
+    exec('git init -b main', { cwd: projectPath, stdio: 'ignore' }, true)
 
-    console.log(green('正在配置 Commitizen...'))
-    const pkgPath = path.join(projectPath, 'package.json')
-    const pkg = readJsonFile<PackageJson>(pkgPath)
-    pkg.config = {
-      commitizen: {
-        path: 'cz-conventional-changelog',
-      },
+    const hooksSpinner = ora('正在设置 Git Hooks...').start()
+    try {
+      exec('npx husky init', { cwd: projectPath, stdio: 'ignore' }, true)
+      fs.writeFileSync(path.join(projectPath, '.husky', 'pre-commit'), `npx lint-staged`)
+      fs.writeFileSync(path.join(projectPath, '.husky', 'commit-msg'), `npx commitlint --edit "$1"`)
+
+      const pkgPath = path.join(projectPath, 'package.json')
+      const pkg = readJsonFile<PackageJson>(pkgPath)
+      pkg.config = {
+        commitizen: {
+          path: 'cz-conventional-changelog',
+        },
+      }
+      writeJsonFile(pkgPath, pkg)
+      hooksSpinner.succeed('Git Hooks(husky、lint-staged、commitlint) 设置成功')
+
+      exec(`${packageManager} run prepare`, { cwd: projectPath, stdio: 'ignore' }, true)
     }
-    writeJsonFile(pkgPath, pkg)
-
-    exec(`${packageManager} run prepare`, { cwd: projectPath })
+    catch {
+      hooksSpinner.fail('Git Hooks 设置失败')
+    }
   }
 }
 
@@ -556,15 +586,21 @@ function logFinalInstructions(projectName: string, packageManager: 'pnpm' | 'npm
   console.log(`  ${packageManager} dev\n`)
 }
 
+// =================================================================
+// #region 主函数
+// =================================================================
+
 /**
  * 主函数，负责编排整个项目创建流程。
  */
-async function main(name?: string, template?: string): Promise<void> {
+async function main(name?: string, template?: string, useRolldown = false): Promise<void> {
   const options = await promptUserOptions(name, template)
+  console.log(bold(green('\n🎉 项目开始配置!')))
+
   const { projectName, packageManager } = options
 
   const projectPath = createProject(projectName)
-  scaffoldVite(projectPath, options)
+  scaffoldVite(projectPath, options, useRolldown)
 
   const allDependencies: string[] = []
   const allDevDependencies: string[] = []
@@ -601,7 +637,7 @@ async function main(name?: string, template?: string): Promise<void> {
   setupVSCode(projectPath, options)
   updatePackageJson(projectPath, pkgUpdates)
 
-  installDependencies(
+  await installDependencies(
     projectPath,
     options,
     [...new Set(allDependencies)],
@@ -615,15 +651,17 @@ async function main(name?: string, template?: string): Promise<void> {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const pkg: PackageJson = readJsonFile(path.join(__dirname, '../package.json'))
+
 program
   .name(Object.keys(pkg.bin)[0])
   .description(pkg.description)
   .version(pkg.version)
   .option('-n, --name [name]', 'generated directory name')
   .option('-t, --template [template]', 'used templateName: vue / vue-ts')
-  .action(async ({ name, template }) => {
+  .option('-r, --rolldown [useRolldown]', 'use / do not use rolldown-vite (Experimental)')
+  .action(async ({ name, template, useRolldown }: OptionsArguments) => {
     try {
-      await main(name, template)
+      await main(name, template, useRolldown)
     }
     catch (e: unknown) {
       console.error(red((e as Error).stack || (e as Error).message || String(e)))
