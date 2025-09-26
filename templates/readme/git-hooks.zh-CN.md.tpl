@@ -7,7 +7,7 @@
 本项目使用 Commitizen 来规范提交信息。请使用以下命令替代 `git commit` 命令：
 
 ```bash
-{{ packageManager }} run cz
+<%= packageManager %> run cz
 ```
 
 这将引导您通过一系列问题来生成一个符合规范的提交信息。关于提交信息格式的更多细节，请参考 [Conventional Commits 规范](https://www.conventionalcommits.org/)。

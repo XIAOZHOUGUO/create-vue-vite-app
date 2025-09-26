@@ -40,6 +40,7 @@
   },
   "dependencies": {
     "commander": "^14.0.0",
+    "ejs": "^3.1.10",
     "jsonc-parser": "^3.3.1",
     "kolorist": "^1.8.0",
     "ora": "^8.0.1",
@@ -48,6 +49,7 @@
   "devDependencies": {
     "@antfu/eslint-config": "^5.4.1",
     "@types/commander": "^2.12.5",
+    "@types/ejs": "^3.1.5",
     "@types/node": "^24.1.0",
     "@types/prompts": "^2.4.9",
     "eslint": "^9.36.0",

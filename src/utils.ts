@@ -1,11 +1,14 @@
 import type { Buffer } from 'node:buffer'
 import type { ExecSyncOptions } from 'node:child_process'
-import { execSync } from 'node:child_process'
+import { exec as execCallback, execSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
+import { promisify } from 'node:util'
+import ejs from 'ejs'
 import { parse } from 'jsonc-parser'
+
 import { red } from 'kolorist'
 
 /**
@@ -38,6 +41,36 @@ export function exec(command: string, options: ExecSyncOptions = {}, throwOnErro
 
   try {
     return execSync(command, { stdio: 'inherit', ...options })
+  }
+  catch (e: unknown) {
+    const errorMsg = `命令执行失败: ${command}`
+    console.error(red(`✖ ${errorMsg}`))
+
+    if (throwOnError) {
+      throw new Error(`${errorMsg}\n${(e as Error).message}`)
+    }
+
+    console.error(red((e as Error).message || String(e)))
+    process.exit(1)
+  }
+}
+
+const execAsync = promisify(execCallback)
+
+/**
+ * 异步执行一个 shell 命令，并包含错误处理和日志记录。
+ * @param command 要执行的命令字符串。
+ * @param options 执行命令的选项。
+ * @param throwOnError 是否抛出异常而不是退出进程。
+ * @throws 当命令执行失败且 throwOnError 为 true 时抛出异常。
+ */
+export async function execPromise(command: string, options: ExecSyncOptions = {}, throwOnError = false): Promise<{ stdout: string, stderr: string }> {
+  if (!command || typeof command !== 'string') {
+    throw new Error('命令不能为空且必须是字符串')
+  }
+
+  try {
+    return await execAsync(command, { ...options })
   }
   catch (e: unknown) {
     const errorMsg = `命令执行失败: ${command}`
@@ -166,4 +199,32 @@ export function copyTemplate(templateName: string, replacements: Record<string, 
 
   // 清理所有未被替换的、且独自占据一行的占位符
   return content.replace(REMAINING_PLACEHOLDERS_REGEX, '')
+}
+
+/**
+ * 读取并使用 ejs 渲染一个模板文件。
+ * @param templateName 模板文件名 (位于 `templates/` 目录下)。
+ * @param data 一个包含模板所需数据的对象。
+ * @returns 渲染完成的模板内容字符串。
+ * @throws 当模板文件不存在或渲染失败时抛出异常。
+ */
+export function renderTemplate(templateName: string, data: Record<string, any> = {}): string {
+  if (!templateName || typeof templateName !== 'string') {
+    throw new Error('模板文件名不能为空且必须是字符串')
+  }
+
+  const __dirname = path.dirname(fileURLToPath(import.meta.url))
+  const templatePath = path.join(__dirname, '../templates', templateName)
+
+  if (!fs.existsSync(templatePath)) {
+    throw new Error(`模板文件不存在: ${templatePath}`)
+  }
+
+  try {
+    const templateContent = fs.readFileSync(templatePath, 'utf-8')
+    return ejs.render(templateContent, data)
+  }
+  catch (e: unknown) {
+    throw new Error(`渲染模板文件失败 ${templatePath}: ${(e as Error).message}`)
+  }
 }

@@ -1,4 +1,4 @@
 ## Code Quality Tools
 
-{{ eslintSection }}
-{{ gitHooksSection }}
+<%- eslintSection %>
+<%- gitHooksSection %>

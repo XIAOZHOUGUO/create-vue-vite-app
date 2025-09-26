@@ -9,9 +9,9 @@ import { bold, green, red } from 'kolorist'
 import ora from 'ora'
 import prompts from 'prompts'
 import {
-  copyTemplate,
-  exec,
+  execPromise as exec,
   readJsonFile,
+  renderTemplate,
   sortObjectKeys,
   validateProjectName,
   writeJsonFile,
@@ -193,7 +193,7 @@ function createProject(projectName: string): string {
  * @param projectPath 项目的绝对路径。
  * @param options 用户的配置选项。
  */
-function scaffoldVite(projectPath: string, options: UserOptions, useRolldown?: boolean): void {
+async function scaffoldVite(projectPath: string, options: UserOptions, useRolldown?: boolean): Promise<void> {
   const { packageManager, needsTypeScript } = options
   const template = needsTypeScript ? 'vue-ts' : 'vue'
   const command
@@ -203,7 +203,7 @@ function scaffoldVite(projectPath: string, options: UserOptions, useRolldown?: b
 
   const spinner = ora('正在使用 Vite 构建项目脚手架...').start()
   try {
-    exec(command, { cwd: projectPath, stdio: 'ignore' }, true)
+    await exec(command, { cwd: projectPath, stdio: 'ignore' }, true)
     spinner.succeed('Vite 项目脚手架构建成功')
   }
   catch (e) {
@@ -252,11 +252,11 @@ function setupRouter(projectPath: string, options: UserOptions): FeatureResult {
 
   const templateName = needsTypeScript ? 'router/router.ts.tpl' : 'router/router.js.tpl'
   const targetFile = needsTypeScript ? 'index.ts' : 'index.js'
-  fs.writeFileSync(path.join(routerDir, targetFile), copyTemplate(templateName))
+  fs.writeFileSync(path.join(routerDir, targetFile), renderTemplate(templateName))
 
   const viewsDir = path.join(projectPath, 'src', 'views')
   fs.mkdirSync(viewsDir, { recursive: true })
-  fs.writeFileSync(path.join(viewsDir, 'Home.vue'), copyTemplate('Home.vue.tpl'))
+  fs.writeFileSync(path.join(viewsDir, 'Home.vue'), renderTemplate('Home.vue.tpl'))
 
   const appVuePath = path.join(projectPath, 'src', 'App.vue')
   let appVueContent = fs.readFileSync(appVuePath, 'utf-8')
@@ -281,11 +281,11 @@ function setupPinia(projectPath: string, options: UserOptions): FeatureResult {
 
   const piniaIndexTemplate = needsTypeScript ? 'store/store-index.ts.tpl' : 'store/store-index.js.tpl'
   const piniaIndexFile = needsTypeScript ? 'index.ts' : 'index.js'
-  fs.writeFileSync(path.join(storeDir, piniaIndexFile), copyTemplate(piniaIndexTemplate))
+  fs.writeFileSync(path.join(storeDir, piniaIndexFile), renderTemplate(piniaIndexTemplate))
 
   const counterStoreTemplate = needsTypeScript ? 'store/store-counter.ts.tpl' : 'store/store-counter.js.tpl'
   const counterStoreFile = needsTypeScript ? 'counter.ts' : 'counter.js'
-  fs.writeFileSync(path.join(storeDir, counterStoreFile), copyTemplate(counterStoreTemplate))
+  fs.writeFileSync(path.join(storeDir, counterStoreFile), renderTemplate(counterStoreTemplate))
 
   return {
     dependencies: ['pinia'],
@@ -299,9 +299,9 @@ function setupEslint(projectPath: string, options: UserOptions): FeatureResult {
   const { needsTypeScript, needsUnoCSS } = options
   const targetFile = needsTypeScript ? 'eslint.config.ts' : 'eslint.config.js'
 
-  const eslintConfigContent = copyTemplate('eslint.config.js.tpl', {
-    typeScriptConfig: needsTypeScript ? 'typescript: true,' : '',
-    unoESLintConfig: needsUnoCSS ? 'unocss: true,' : '',
+  const eslintConfigContent = renderTemplate('eslint.config.js.tpl', {
+    typeScriptConfig: needsTypeScript,
+    unoESLintConfig: needsUnoCSS,
   })
   fs.writeFileSync(path.join(projectPath, targetFile), eslintConfigContent)
 
@@ -324,7 +324,7 @@ function setupEslint(projectPath: string, options: UserOptions): FeatureResult {
 function setupUnoCSS(projectPath: string, options: UserOptions): FeatureResult {
   const { needsTypeScript } = options
   const targetFile = needsTypeScript ? 'uno.config.ts' : 'uno.config.js'
-  fs.writeFileSync(path.join(projectPath, targetFile), copyTemplate('uno.config.js.tpl'))
+  fs.writeFileSync(path.join(projectPath, targetFile), renderTemplate('uno.config.js.tpl'))
 
   const viteConfigFile = needsTypeScript ? 'vite.config.ts' : 'vite.config.js'
   let viteConfigContent = fs.readFileSync(path.join(projectPath, viteConfigFile), 'utf-8')
@@ -343,7 +343,7 @@ function setupUnoCSS(projectPath: string, options: UserOptions): FeatureResult {
 }
 
 function setupGitHooks(projectPath: string): FeatureResult {
-  fs.writeFileSync(path.join(projectPath, 'commitlint.config.js'), copyTemplate('commitlint.config.js.tpl'))
+  fs.writeFileSync(path.join(projectPath, 'commitlint.config.js'), renderTemplate('commitlint.config.js.tpl'))
   return {
     'dependencies': [],
     'devDependencies': [
@@ -364,24 +364,20 @@ function setupVSCode(projectPath: string, options: UserOptions): void {
   const vscodeDir = path.join(projectPath, '.vscode')
   fs.mkdirSync(vscodeDir, { recursive: true })
 
-  const extensionsContent = copyTemplate('vscode/extensions.json.tpl', {
-    eslintExtension: needsEslint ? '"dbaeumer.vscode-eslint",' : '',
-    unocssExtension: needsUnoCSS ? '"antfu.unocss",' : '',
+  const extensionsContent = renderTemplate('vscode/extensions.json.tpl', {
+    eslintExtension: needsEslint,
+    unocssExtension: needsUnoCSS,
   })
   fs.writeFileSync(path.join(vscodeDir, 'extensions.json'), extensionsContent)
-  fs.writeFileSync(path.join(vscodeDir, 'settings.json'), copyTemplate('vscode/settings.json.tpl'))
+  fs.writeFileSync(path.join(vscodeDir, 'settings.json'), renderTemplate('vscode/settings.json.tpl'))
 }
 
 function generateAndWriteReadme(projectPath: string, options: UserOptions): void {
   const {
-    projectName,
     packageManager,
     cssPreprocessor,
     needsTypeScript,
-    needsRouter,
-    needsPinia,
     needsEslint,
-    needsUnoCSS,
     needsGitCommit,
   } = options
 
@@ -415,8 +411,8 @@ function generateAndWriteReadme(projectPath: string, options: UserOptions): void
     {
       option: 'cssPreprocessor',
       check: (value: string) => value !== 'none',
-      en: `- **${cssPreprocessor}**: ${cssPreprocessor} pre-processor...`,
-      zh: `- **${cssPreprocessor}**: ${cssPreprocessor} 预处理器...`,
+      en: `- **${cssPreprocessor.charAt(0).toUpperCase() + cssPreprocessor.slice(1)}**: ${cssPreprocessor.charAt(0).toUpperCase() + cssPreprocessor.slice(1)} CSS pre-processor...`,
+      zh: `- **${cssPreprocessor.charAt(0).toUpperCase() + cssPreprocessor.slice(1)}**: ${cssPreprocessor.charAt(0).toUpperCase() + cssPreprocessor.slice(1)} CSS 预处理器...`,
     },
     {
       option: 'needsUnoCSS',
@@ -432,7 +428,13 @@ function generateAndWriteReadme(projectPath: string, options: UserOptions): void
 
   const activeFeatures = featureDefinitions.filter((feature) => {
     const value = options[feature.option as keyof UserOptions]
-    return feature.check ? feature.check(value as string) : value
+    if (typeof value === 'boolean') {
+      return value
+    }
+    if (typeof value === 'string' && feature.check) {
+      return feature.check(value)
+    }
+    return false
   })
 
   const featuresEn = activeFeatures.length > 0
@@ -442,36 +444,32 @@ function generateAndWriteReadme(projectPath: string, options: UserOptions): void
     ? activeFeatures.map(f => f.zh).join('\n')
     : '- **基础 Vue 环境**: 一个使用 Vite 构建的最小化 Vue 3 项目。'
 
-  const baseTplVars = {
-    projectName,
-    packageManager,
-    mainFileExtension: needsTypeScript ? 'ts' : 'js',
-    viteConfigExtension: needsTypeScript ? 'ts' : 'js',
-    tsconfig: needsTypeScript ? `├── tsconfig.json\n├── tsconfig.node.json` : '',
-    eslintConfig: needsEslint ? `├── eslint.config.${needsTypeScript ? 'ts' : 'js'}` : '',
-    unocssConfig: needsUnoCSS ? `├── uno.config.${needsTypeScript ? 'ts' : 'js'}` : '',
-    commitlintConfig: needsGitCommit ? `├── commitlint.config.js\n├── .husky/` : '',
-  }
-
   let qualityToolsEn = ''
   let qualityToolsZh = ''
 
   if (needsEslint || needsGitCommit) {
     const replacements = { packageManager }
-    const eslintEn = needsEslint ? copyTemplate('readme/eslint.en.md.tpl', replacements) : ''
-    const eslintZh = needsEslint ? copyTemplate('readme/eslint.zh-CN.md.tpl', replacements) : ''
-    const gitHooksEn = needsGitCommit ? copyTemplate('readme/git-hooks.en.md.tpl', replacements) : ''
-    const gitHooksZh = needsGitCommit ? copyTemplate('readme/git-hooks.zh-CN.md.tpl', replacements) : ''
+    const eslintEn = needsEslint ? renderTemplate('readme/eslint.en.md.tpl', replacements) : ''
+    const eslintZh = needsEslint ? renderTemplate('readme/eslint.zh-CN.md.tpl', replacements) : ''
+    const gitHooksEn = needsGitCommit ? renderTemplate('readme/git-hooks.en.md.tpl', replacements) : ''
+    const gitHooksZh = needsGitCommit ? renderTemplate('readme/git-hooks.zh-CN.md.tpl', replacements) : ''
 
-    qualityToolsEn = copyTemplate('readme/quality-tools.en.md.tpl', { eslintSection: eslintEn, gitHooksSection: gitHooksEn })
-    qualityToolsZh = copyTemplate('readme/quality-tools.zh-CN.md.tpl', { eslintSection: eslintZh, gitHooksSection: gitHooksZh })
+    qualityToolsEn = renderTemplate('readme/quality-tools.en.md.tpl', { eslintSection: eslintEn, gitHooksSection: gitHooksEn })
+    qualityToolsZh = renderTemplate('readme/quality-tools.zh-CN.md.tpl', { eslintSection: eslintZh, gitHooksSection: gitHooksZh })
   }
 
-  const enTplVars = { ...baseTplVars, features: featuresEn, lintScript: needsEslint ? `- \`${packageManager} run lint\`: run lint and auto fix code.` : '', routerDir: needsRouter ? `│   ├── router/       # Vue Router` : '', piniaDir: needsPinia ? `│   ├── store/        # Pinia` : '', viewsDir: needsRouter ? `│   ├── views/        # pages` : '', codeQualityTools: qualityToolsEn }
-  const zhTplVars = { ...baseTplVars, features: featuresZh, lintScript: needsEslint ? `- \`${packageManager} run lint\`: 运行 ESLint 检查并自动修复代码中的问题。` : '', routerDir: needsRouter ? `│   ├── router/       # Vue Router 路由配置` : '', piniaDir: needsPinia ? `│   ├── store/        # Pinia 状态管理模块` : '', viewsDir: needsRouter ? `│   ├── views/        # 页面级 Vue 组件` : '', codeQualityTools: qualityToolsZh }
+  const tplVars = {
+    ...options,
+    featuresEn,
+    featuresZh,
+    qualityToolsEn,
+    qualityToolsZh,
+    mainFileExtension: needsTypeScript ? 'ts' : 'js',
+    viteConfigExtension: needsTypeScript ? 'ts' : 'js',
+  }
 
-  fs.writeFileSync(path.join(projectPath, 'README.md'), copyTemplate('readme/README.md.tpl', enTplVars))
-  fs.writeFileSync(path.join(projectPath, 'README.zh-CN.md'), copyTemplate('readme/README.zh-CN.md.tpl', zhTplVars))
+  fs.writeFileSync(path.join(projectPath, 'README.md'), renderTemplate('readme/README.md.tpl', tplVars))
+  fs.writeFileSync(path.join(projectPath, 'README.zh-CN.md'), renderTemplate('readme/README.zh-CN.md.tpl', tplVars))
 }
 
 /**
@@ -519,7 +517,7 @@ async function installDependencies(projectPath: string, options: UserOptions, de
     pkg.devDependencies = sortObjectKeys(pkg.devDependencies)
 
     writeJsonFile(pkgPath, pkg)
-    exec(`${packageManager} install`, { cwd: projectPath, stdio: 'ignore' }, true)
+    await exec(`${packageManager} install`, { cwd: projectPath, stdio: 'ignore' })
     spinner.succeed('依赖安装成功')
   }
   catch (e) {
@@ -533,13 +531,13 @@ async function installDependencies(projectPath: string, options: UserOptions, de
  * @param projectPath 项目的绝对路径。
  * @param options 用户的配置选项。
  */
-function runPostInstallTasks(projectPath: string, options: UserOptions): void {
+async function runPostInstallTasks(projectPath: string, options: UserOptions): Promise<void> {
   const { packageManager } = options
 
   if (options.needsEslint) {
     const spinner = ora('正在使用 ESLint 格式化项目...').start()
     try {
-      exec('npx eslint . --fix', { cwd: projectPath, stdio: 'ignore' }, true)
+      await exec('npx eslint . --fix', { cwd: projectPath, stdio: 'ignore' })
       spinner.succeed('ESLint 格式化成功')
     }
     catch {
@@ -548,11 +546,11 @@ function runPostInstallTasks(projectPath: string, options: UserOptions): void {
   }
 
   if (options.needsGitCommit) {
-    exec('git init -b main', { cwd: projectPath, stdio: 'ignore' }, true)
+    await exec('git init -b main', { cwd: projectPath, stdio: 'ignore' })
 
     const hooksSpinner = ora('正在设置 Git Hooks...').start()
     try {
-      exec('npx husky init', { cwd: projectPath, stdio: 'ignore' }, true)
+      await exec('npx husky init', { cwd: projectPath, stdio: 'ignore' })
       fs.writeFileSync(path.join(projectPath, '.husky', 'pre-commit'), `npx lint-staged`)
       fs.writeFileSync(path.join(projectPath, '.husky', 'commit-msg'), `npx commitlint --edit "$1"`)
 
@@ -566,7 +564,7 @@ function runPostInstallTasks(projectPath: string, options: UserOptions): void {
       writeJsonFile(pkgPath, pkg)
       hooksSpinner.succeed('Git Hooks(husky、lint-staged、commitlint) 设置成功')
 
-      exec(`${packageManager} run prepare`, { cwd: projectPath, stdio: 'ignore' }, true)
+      await exec(`${packageManager} run prepare`, { cwd: projectPath, stdio: 'ignore' })
     }
     catch {
       hooksSpinner.fail('Git Hooks 设置失败')
@@ -600,7 +598,7 @@ async function main(name?: string, template?: string, useRolldown = false): Prom
   const { projectName, packageManager } = options
 
   const projectPath = createProject(projectName)
-  scaffoldVite(projectPath, options, useRolldown)
+  await scaffoldVite(projectPath, options, useRolldown)
 
   const allDependencies: string[] = []
   const allDevDependencies: string[] = []
@@ -644,7 +642,7 @@ async function main(name?: string, template?: string, useRolldown = false): Prom
     [...new Set(allDevDependencies)],
   )
 
-  runPostInstallTasks(projectPath, options)
+  await runPostInstallTasks(projectPath, options)
   generateAndWriteReadme(projectPath, options)
   logFinalInstructions(projectName, packageManager)
 }

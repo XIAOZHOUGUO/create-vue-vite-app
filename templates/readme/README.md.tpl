@@ -1,4 +1,4 @@
-# {{ projectName }}
+# <%= projectName %>
 
 ## Introduction
 
@@ -8,7 +8,7 @@ This is a modern frontend project built with [Vue 3](https://vuejs.org/) and [Vi
 
 This project integrates the following features based on your selections:
 
-{{ features }}
+<%- featuresEn %>
 
 ## Project Quick Start
 
@@ -17,43 +17,63 @@ Once your project is created, navigate into the project directory and follow the
 1. **Install Dependencies**
 
     ```bash
-    {{ packageManager }} install
+    <%= packageManager %> install
     ```
 
 2. **Run Development Server**
 
     ```bash
-    {{ packageManager }} run dev
+    <%= packageManager %> run dev
     ```
 
 ## Available Scripts
 
-- `{{ packageManager }} run dev`: Runs the application in development mode.
-- `{{ packageManager }} run build`: Builds the application for production.
-{{ lintScript }}
+- `<%= packageManager %> run dev`: Runs the application in development mode.
+- `<%= packageManager %> run build`: Builds the application for production.
+<% if (needsEslint) { -%>
+- `<%= packageManager %> run lint`: run lint and auto fix code.
+<% } -%>
 
 ## Directory Structure
 
 ```text
-{{ projectName }}/
+<%= projectName %>
+<% if (needsGitCommit) { -%>
+├── .husky/
+<% } -%>
+├── .vscode/          # VS Code editor configuration
 ├── public/
 ├── src/
 │   ├── assets/       # Static assets
 │   ├── components/   # Reusable Vue components
-{{ routerDir }}
-{{ piniaDir }}
-{{ viewsDir }}
+<% if (needsRouter) { -%>
+│   ├── router/       # Vue Router
+<% } -%>
+<% if (needsPinia) { -%>
+│   ├── store/        # Pinia
+<% } -%>
+<% if (needsRouter) { -%>
+│   ├── views/        # pages
+<% } -%>
 │   ├── App.vue       # Root Vue component
-│   └── main.{{ mainFileExtension }}    # Application entry file
-├── .vscode/          # VS Code editor configuration
+│   └── main.<%= mainFileExtension %>    # Application entry file
 ├── .gitignore        # Git ignore file
+<% if (needsGitCommit) { -%>
+├── commitlint.config.js
+<% } -%>
+<% if (needsEslint) { -%>
+├── eslint.config.<%= mainFileExtension === 'ts' ? 'ts' : 'js' %>
+<% } -%>
 ├── index.html        # Application entry HTML file
 ├── package.json      # Project dependencies and scripts
-├── vite.config.{{ viteConfigExtension }} # Vite configuration file
-{{ tsconfig }}
-{{ eslintConfig }}
-{{ unocssConfig }}
-{{ commitlintConfig }}
+<% if (needsTypeScript) { -%>
+├── tsconfig.json
+├── tsconfig.node.json
+<% } -%>
+<% if (needsUnoCSS) { -%>
+├── uno.config.<%= mainFileExtension === 'ts' ? 'ts' : 'js' %>
+<% } -%>
+├── vite.config.<%= viteConfigExtension %> # Vite configuration file
 ```
 
-{{ codeQualityTools }}
+<%- qualityToolsEn %>

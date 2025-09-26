@@ -7,7 +7,7 @@ Husky is used to manage Git hooks. A pre-commit hook is configured to run lint-s
 Commitizen is used to enforce conventional commit messages. To use it, run the following command instead of `git commit`:
 
 ```bash
-{{ packageManager }} run cz
+<%= packageManager %> run cz
 ```
 
 This will prompt you with a series of questions to generate a conventional commit message. For more details on the commit message format, please refer to the [Conventional Commits specification](https://www.conventionalcommits.org/).

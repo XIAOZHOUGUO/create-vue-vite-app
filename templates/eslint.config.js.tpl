@@ -3,7 +3,7 @@ import antfu from '@antfu/eslint-config'
 export default antfu({
   // Enable stylistic formatting rules
   // stylistic: true,
-  {{ unoESLintConfig }}
+  <% if (unoESLintConfig) { %>unocss: true,<% } -%>
   // Or customize the stylistic rules
   stylistic: {
     indent: 2,
@@ -11,7 +11,7 @@ export default antfu({
   },
 
   // TypeScript and Vue are auto-detected, you can also explicitly enable them:
-  {{ typeScriptConfig }}
+  <% if (typeScriptConfig) { %>typescript: true,<% } -%>
   vue: true,
 
   // Disable jsonc and yaml support
