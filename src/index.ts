@@ -583,7 +583,7 @@ function logFinalInstructions(projectName: string, packageManager: 'pnpm' | 'npm
   console.log(bold(green('\n🎉 项目创建成功!')))
   console.log(`开始使用, 请运行:\n`)
   console.log(`  cd ${projectName}`)
-  console.log(`  ${packageManager} dev\n`)
+  console.log(`  ${packageManager} run dev\n`)
 }
 
 // =================================================================
