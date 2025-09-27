@@ -631,6 +631,13 @@ async function main(name?: string, template?: string, useRolldown = false): Prom
     }
   }
 
+  if (options.cssPreprocessor === 'sass') {
+    allDevDependencies.push('sass-embedded')
+  }
+  else if (options.cssPreprocessor === 'less') {
+    allDevDependencies.push('less')
+  }
+
   updateMainFile(projectPath, options, allImportsToAdd, allUsesToAdd)
   setupVSCode(projectPath, options)
   updatePackageJson(projectPath, pkgUpdates)
