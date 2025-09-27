@@ -107,7 +107,7 @@ describe('cli End-to-End Test', () => {
     expect(pkgJson.name).toBe(projectName)
     expect(pkgJson.dependencies).toHaveProperty('vue-router')
     expect(pkgJson.dependencies).toHaveProperty('pinia')
-    expect(pkgJson.devDependencies).toHaveProperty('sass')
+    expect(pkgJson.devDependencies).toHaveProperty('sass-embedded')
     expect(pkgJson.devDependencies).toHaveProperty('husky')
   }, 180000) // 3-minute timeout for the full installation and setup
 })
