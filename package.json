@@ -25,7 +25,7 @@
   ],
   "main": "./dist/index.js",
   "bin": {
-    "create-vue": "./dist/index.js"
+    "create-vue": "dist/index.js"
   },
   "files": [
     "dist/",
