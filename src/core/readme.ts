@@ -9,7 +9,7 @@ export function generateAndWriteReadme(projectPath: string, options: UserOptions
     cssPreprocessor,
     needsTypeScript,
     needsEslint,
-    needsGitCommit,
+    needsGitCommit = false,
   } = options
 
   const featureDefinitions = [
@@ -88,9 +88,9 @@ export function generateAndWriteReadme(projectPath: string, options: UserOptions
     qualityToolsEn = renderTemplate('readme/quality-tools.en.md.tpl', { eslintSection: eslintEn, gitHooksSection: gitHooksEn })
     qualityToolsZh = renderTemplate('readme/quality-tools.zh-CN.md.tpl', { eslintSection: eslintZh, gitHooksSection: gitHooksZh })
   }
-
   const tplVars = {
     ...options,
+    needsGitCommit,
     featuresEn,
     featuresZh,
     qualityToolsEn,
