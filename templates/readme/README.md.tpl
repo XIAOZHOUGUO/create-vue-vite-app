@@ -56,13 +56,13 @@ Once your project is created, navigate into the project directory and follow the
 │   ├── views/        # pages
 <% } -%>
 │   ├── App.vue       # Root Vue component
-│   └── main.<%= mainFileExtension %>    # Application entry file
+│   └── main.<%= ext %>   # Application entry file
 ├── .gitignore        # Git ignore file
 <% if (needsGitCommit) { -%>
 ├── commitlint.config.js
 <% } -%>
 <% if (needsEslint) { -%>
-├── eslint.config.<%= mainFileExtension === 'ts' ? 'ts' : 'js' %>
+├── eslint.config.<%= ext %>
 <% } -%>
 ├── index.html        # Application entry HTML file
 ├── package.json      # Project dependencies and scripts
@@ -71,9 +71,9 @@ Once your project is created, navigate into the project directory and follow the
 ├── tsconfig.node.json
 <% } -%>
 <% if (needsUnoCSS) { -%>
-├── uno.config.<%= mainFileExtension === 'ts' ? 'ts' : 'js' %>
+├── uno.config.<%= ext %>
 <% } -%>
-├── vite.config.<%= viteConfigExtension %> # Vite configuration file
+├── vite.config.<%= ext %> # Vite configuration file
 ```
 
 <%- qualityToolsEn %>

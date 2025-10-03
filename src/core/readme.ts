@@ -6,11 +6,23 @@ import { renderTemplate } from '../utils.ts'
 export function generateAndWriteReadme(projectPath: string, options: UserOptions): void {
   const {
     packageManager,
-    cssPreprocessor,
+    cssOption,
     needsTypeScript,
     needsEslint,
     needsGitCommit = false,
   } = options
+
+  const cssToolName = cssOption.charAt(0).toUpperCase() + cssOption.slice(1)
+  const cssToolDescEn: Record<string, string> = {
+    sass: 'Sass CSS pre-processor',
+    less: 'Less CSS pre-processor',
+    lightningcss: 'An extremely fast CSS parser, transformer, bundler, and minifier.',
+  }
+  const cssToolDescZh: Record<string, string> = {
+    sass: 'Sass CSS 预处理器',
+    less: 'Less CSS 预处理器',
+    lightningcss: '一个极速的 CSS 解析器、转换器、打包器和压缩器。',
+  }
 
   const featureDefinitions = [
     {
@@ -40,10 +52,10 @@ export function generateAndWriteReadme(projectPath: string, options: UserOptions
       zh: '- **ESLint**: 代码规范和风格检查工具...',
     },
     {
-      option: 'cssPreprocessor',
+      option: 'cssOption',
       check: (value: string) => value !== 'none',
-      en: `- **${cssPreprocessor.charAt(0).toUpperCase() + cssPreprocessor.slice(1)}**: ${cssPreprocessor.charAt(0).toUpperCase() + cssPreprocessor.slice(1)} CSS pre-processor...`,
-      zh: `- **${cssPreprocessor.charAt(0).toUpperCase() + cssPreprocessor.slice(1)}**: ${cssPreprocessor.charAt(0).toUpperCase() + cssPreprocessor.slice(1)} CSS 预处理器...`,
+      en: `- **${cssToolName}**: ${cssToolDescEn[cssOption]}...`,
+      zh: `- **${cssToolName}**: ${cssToolDescZh[cssOption]}...`,
     },
     {
       option: 'needsUnoCSS',
@@ -79,7 +91,8 @@ export function generateAndWriteReadme(projectPath: string, options: UserOptions
   let qualityToolsZh = ''
 
   if (needsEslint || needsGitCommit) {
-    const replacements = { packageManager }
+    const eslintConfigFileName = needsTypeScript ? 'eslint.config.ts' : 'eslint.config.js'
+    const replacements = { packageManager, eslintConfigFileName }
     const eslintEn = needsEslint ? renderTemplate('readme/eslint.en.md.tpl', replacements) : ''
     const eslintZh = needsEslint ? renderTemplate('readme/eslint.zh-CN.md.tpl', replacements) : ''
     const gitHooksEn = needsGitCommit ? renderTemplate('readme/git-hooks.en.md.tpl', replacements) : ''
@@ -95,8 +108,7 @@ export function generateAndWriteReadme(projectPath: string, options: UserOptions
     featuresZh,
     qualityToolsEn,
     qualityToolsZh,
-    mainFileExtension: needsTypeScript ? 'ts' : 'js',
-    viteConfigExtension: needsTypeScript ? 'ts' : 'js',
+    ext: needsTypeScript ? 'ts' : 'js',
   }
 
   fs.writeFileSync(path.join(projectPath, 'README.md'), renderTemplate('readme/README.md.tpl', tplVars))

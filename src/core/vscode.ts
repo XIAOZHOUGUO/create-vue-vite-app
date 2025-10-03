@@ -4,7 +4,7 @@ import path from 'node:path'
 import { renderTemplate, writeJsonFile } from '../utils.ts'
 
 export function setupVSCode(projectPath: string, options: UserOptions): void {
-  const { needsEslint, needsUnoCSS } = options
+  const { needsEslint, needsUnoCSS, cssOption } = options
   const vscodeDir = path.join(projectPath, '.vscode')
   fs.mkdirSync(vscodeDir, { recursive: true })
 
@@ -20,6 +20,10 @@ export function setupVSCode(projectPath: string, options: UserOptions): void {
     recommendations,
   }
 
+  const tplVars = {
+    cssValidationSetting: cssOption === 'lightningcss' ? '"css.validate": false, ' : '',
+  }
+
   writeJsonFile(path.join(vscodeDir, 'extensions.json'), extensionsJson)
-  fs.writeFileSync(path.join(vscodeDir, 'settings.json'), renderTemplate('vscode/settings.json.tpl'))
+  fs.writeFileSync(path.join(vscodeDir, 'settings.json'), renderTemplate('vscode/settings.json.tpl', tplVars))
 }

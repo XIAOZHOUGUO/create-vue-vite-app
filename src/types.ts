@@ -8,7 +8,7 @@ export interface UserOptions {
   needsRouter: boolean
   needsPinia: boolean
   needsEslint: boolean
-  cssPreprocessor: 'none' | 'sass' | 'less'
+  cssOption: 'none' | 'sass' | 'less' | 'lightningcss'
   needsUnoCSS: boolean
   needsGitCommit: boolean
 }

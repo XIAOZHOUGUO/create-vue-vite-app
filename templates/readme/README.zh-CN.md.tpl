@@ -56,13 +56,13 @@
 │   ├── views/        # 页面级 Vue 组件
 <% } -%>
 │   ├── App.vue       # 应用根组件
-│   └── main.<%= mainFileExtension %>    # 应用入口文件
+│   └── main.<%= ext %>   # 应用入口文件
 ├── .gitignore        # Git 忽略文件
 <% if (needsGitCommit) { -%>
 ├── commitlint.config.js
 <% } -%>
 <% if (needsEslint) { -%>
-├── eslint.config.<%= mainFileExtension === 'ts' ? 'ts' : 'js' %>
+├── eslint.config.<%= ext %>
 <% } -%>
 ├── index.html        # 应用入口 HTML 文件
 ├── package.json      # 项目依赖和脚本配置
@@ -71,9 +71,9 @@
 ├── tsconfig.node.json
 <% } -%>
 <% if (needsUnoCSS) { -%>
-├── uno.config.<%= mainFileExtension === 'ts' ? 'ts' : 'js' %>
+├── uno.config.<%= ext %>
 <% } -%>
-├── vite.config.<%= viteConfigExtension %> # Vite 配置文件
+├── vite.config.<%= ext %> # Vite 配置文件
 ```
 
 <%- qualityToolsZh %>

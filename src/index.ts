@@ -10,6 +10,7 @@ import { bold, green, red } from 'kolorist'
 import ora from 'ora'
 import { setupEslint } from './core/eslint.ts'
 import { setupGitHooks } from './core/git.ts'
+import { setupLightningCSS } from './core/lightningcss.ts'
 import { setupPinia } from './core/pinia.ts'
 import { generateAndWriteReadme } from './core/readme.ts'
 import { setupRouter } from './core/router.ts'
@@ -254,11 +255,15 @@ async function main(name?: string, template?: string, useRolldown = false): Prom
     }
   }
 
-  if (options.cssPreprocessor === 'sass') {
+  if (options.cssOption === 'sass') {
     allDevDependencies.push('sass-embedded')
   }
-  else if (options.cssPreprocessor === 'less') {
+  else if (options.cssOption === 'less') {
     allDevDependencies.push('less')
+  }
+  else if (options.cssOption === 'lightningcss') {
+    const { devDependencies } = setupLightningCSS(projectPath, options)
+    allDevDependencies.push(...devDependencies)
   }
 
   updateMainFile(projectPath, options, allImportsToAdd, allUsesToAdd)

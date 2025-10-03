@@ -1,4 +1,5 @@
 {
+  <%- locals.cssValidationSetting %>
   "eslint.useFlatConfig": true,
   "explorer.fileNesting.enabled": true,
   "explorer.fileNesting.patterns": {

@@ -63,12 +63,13 @@ export async function promptUserOptions(name?: string, template?: string): Promi
     },
     {
       type: 'select',
-      name: 'cssPreprocessor',
-      message: '选择 CSS 预处理器:',
+      name: 'cssOption',
+      message: '选择 CSS 配置:',
       choices: [
         { title: '无', value: 'none' },
         { title: 'Sass', value: 'sass' },
         { title: 'Less', value: 'less' },
+        { title: 'LightningCSS (实验性)', value: 'lightningcss' },
       ],
       initial: 0,
     },
