@@ -21,7 +21,7 @@ export function setupVSCode(projectPath: string, options: UserOptions): void {
   }
 
   const tplVars = {
-    cssValidationSetting: cssOption === 'lightningcss' ? '"css.validate": false, ' : '',
+    cssValidationSetting: cssOption === 'lightningcss',
   }
 
   writeJsonFile(path.join(vscodeDir, 'extensions.json'), extensionsJson)

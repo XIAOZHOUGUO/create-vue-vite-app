@@ -3,7 +3,8 @@ import antfu from '@antfu/eslint-config'
 export default antfu({
   // Enable stylistic formatting rules
   // stylistic: true,
-  <% if (unoESLintConfig) { %>unocss: true,<% } -%>
+  <% if (unoESLintConfig) { %>unocss: true,
+  <% } -%>
   // Or customize the stylistic rules
   stylistic: {
     indent: 2,

@@ -28,8 +28,7 @@
     "create-vue": "dist/index.js"
   },
   "files": [
-    "dist/",
-    "templates/"
+    "dist/"
   ],
   "scripts": {
     "build": "tsdown",
