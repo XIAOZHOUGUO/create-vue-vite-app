@@ -1,7 +1,7 @@
 {
   "name": "@qinmoon/create-vue-vite-app",
   "type": "module",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "A CLI tool to quickly scaffold new Vue 3 projects with Vite, offering options for TypeScript, Vue Router, Pinia, ESLint, UnoCSS, and Git commit hooks.",
   "author": "xiaozhou <guoxiaozhou_ok@163.com>",
   "license": "MIT",
