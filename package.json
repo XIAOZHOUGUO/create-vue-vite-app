@@ -31,6 +31,9 @@
     "dist/",
     "templates/"
   ],
+  "engines": {
+    "node": ">=21.0.0"
+  },
   "scripts": {
     "build": "tsdown",
     "prepublishOnly": "npm run build",
