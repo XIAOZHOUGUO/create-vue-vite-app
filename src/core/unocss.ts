@@ -1,7 +1,7 @@
 import type { FeatureResult, UserOptions } from '../types.ts'
 import fs from 'node:fs'
 import path from 'node:path'
-import { renderTemplate } from '../utils.ts'
+import { insertImports, renderTemplate } from '../utils.ts'
 
 export function setupUnoCSS(projectPath: string, options: UserOptions): FeatureResult {
   const { needsTypeScript } = options
@@ -10,10 +10,9 @@ export function setupUnoCSS(projectPath: string, options: UserOptions): FeatureR
 
   const viteConfigFile = needsTypeScript ? 'vite.config.ts' : 'vite.config.js'
   let viteConfigContent = fs.readFileSync(path.join(projectPath, viteConfigFile), 'utf-8')
-  viteConfigContent
-    = viteConfigContent
-      .replace(/import \{ defineConfig \} from 'vite'/g, `import { defineConfig } from 'vite'\nimport UnoCSS from 'unocss/vite'`)
-      .replace(/(plugins:\s*\[)/, `$1\n    UnoCSS(),`)
+  viteConfigContent = insertImports(viteConfigContent, ['import UnoCSS from \'unocss/vite\''])
+  // UnoCSS 官方建议置于 plugins 数组首位
+  viteConfigContent = viteConfigContent.replace(/(plugins:\s*\[)/, `$1\n    UnoCSS(),`)
   fs.writeFileSync(path.join(projectPath, viteConfigFile), viteConfigContent)
 
   return {

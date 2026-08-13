@@ -69,6 +69,7 @@
 <% if (needsTypeScript) { -%>
 ├── tsconfig.json
 ├── tsconfig.node.json
+├── types/            # 自动生成的类型声明 (auto-imports / components)
 <% } -%>
 <% if (needsUnoCSS) { -%>
 ├── uno.config.<%= ext %>

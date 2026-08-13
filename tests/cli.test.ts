@@ -23,7 +23,8 @@ afterEach(() => {
       console.warn('⚠️ Cleanup failed (可能是 Windows 文件锁):', e)
     }
   }
-})
+  // 删除 node_modules 在 Windows 上远超默认的 10s hook 超时
+}, 60000)
 
 // --- Constants for Interaction ---
 const ARROW_DOWN = '\x1B[B'
@@ -109,5 +110,19 @@ describe('cli End-to-End Test', () => {
     expect(pkgJson.dependencies).toHaveProperty('pinia')
     expect(pkgJson.devDependencies).toHaveProperty('sass-embedded')
     expect(pkgJson.devDependencies).toHaveProperty('husky')
+    expect(pkgJson.devDependencies).toHaveProperty('vite-plugin-vue-devtools')
+    expect(pkgJson.devDependencies).toHaveProperty('unplugin-auto-import')
+    expect(pkgJson.devDependencies).toHaveProperty('unplugin-vue-components')
+
+    // Assert the default plugins were injected into vite.config.ts
+    const viteConfig = readFileSync(join(projectPath, 'vite.config.ts'), 'utf-8')
+    expect(viteConfig).toContain('vueDevTools()')
+    expect(viteConfig).toContain('dts: \'types/auto-imports.d.ts\'')
+    expect(viteConfig).toContain('dts: \'types/components.d.ts\'')
+    expect(viteConfig).toContain('imports: [\'vue\', \'vue-router\', \'pinia\']')
+
+    // Assert the generated d.ts folder is covered by tsconfig
+    const tsconfigApp = JSON.parse(readFileSync(join(projectPath, 'tsconfig.app.json'), 'utf-8'))
+    expect(tsconfigApp.include).toContain('types/**/*.d.ts')
   }, 180000) // 3-minute timeout for the full installation and setup
 })

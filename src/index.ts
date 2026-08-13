@@ -15,6 +15,7 @@ import { setupPinia } from './core/pinia.ts'
 import { generateAndWriteReadme } from './core/readme.ts'
 import { setupRouter } from './core/router.ts'
 import { setupUnoCSS } from './core/unocss.ts'
+import { setupVitePlugins } from './core/vite-plugins.ts'
 import { setupVSCode } from './core/vscode.ts'
 import { promptUserOptions } from './prompts.ts'
 import {
@@ -46,13 +47,13 @@ function createProject(projectName: string): string {
  * @param projectPath 项目的绝对路径。
  * @param options 用户的配置选项。
  */
-async function scaffoldVite(projectPath: string, options: UserOptions, useRolldown?: boolean): Promise<void> {
+async function scaffoldVite(projectPath: string, options: UserOptions): Promise<void> {
   const { packageManager, needsTypeScript } = options
   const template = needsTypeScript ? 'vue-ts' : 'vue'
   const command
     = packageManager === 'pnpm'
-      ? `pnpm create vite . --template ${template} --rolldown ${useRolldown} --immediate false`
-      : `npm create vite@latest . --template ${template} --rolldown ${useRolldown} --immediate false`
+      ? `pnpm create vite . --template ${template} --immediate false`
+      : `npm create vite@latest . --template ${template} --immediate false`
 
   const spinner = ora('正在使用 Vite 构建项目脚手架...').start()
   try {
@@ -215,20 +216,23 @@ function logFinalInstructions(projectName: string, packageManager: 'pnpm' | 'npm
 /**
  * 主函数，负责编排整个项目创建流程。
  */
-async function main(name?: string, template?: string, useRolldown = false): Promise<void> {
+async function main(name?: string, template?: string): Promise<void> {
   const options = await promptUserOptions(name, template)
   console.log(bold(green('\n🎉 项目开始配置!')))
 
   const { projectName, packageManager } = options
 
   const projectPath = createProject(projectName)
-  await scaffoldVite(projectPath, options, useRolldown)
+  await scaffoldVite(projectPath, options)
 
   const allDependencies: string[] = []
   const allDevDependencies: string[] = []
   const pkgUpdates: Partial<FeatureResult> = { scripts: {} }
   const allImportsToAdd: string[] = []
   const allUsesToAdd: string[] = []
+
+  // 先注入默认插件，后续 UnoCSS 插在 plugins 数组头部，保证其排在最前
+  allDevDependencies.push(...setupVitePlugins(projectPath, options).devDependencies)
 
   const featureSetups: Record<string, (p: string, o: UserOptions) => FeatureResult> = {
     needsRouter: setupRouter,
@@ -291,10 +295,9 @@ program
   .version(pkg.version)
   .option('-n, --name [name]', 'generated directory name')
   .option('-t, --template [template]', 'used templateName: vue / vue-ts')
-  .option('-r, --rolldown [useRolldown]', 'use / do not use rolldown-vite (Experimental)')
-  .action(async ({ name, template, useRolldown }: OptionsArguments) => {
+  .action(async ({ name, template }: OptionsArguments) => {
     try {
-      await main(name, template, useRolldown)
+      await main(name, template)
     }
     catch (e: unknown) {
       console.error(red((e as Error).stack || (e as Error).message || String(e)))

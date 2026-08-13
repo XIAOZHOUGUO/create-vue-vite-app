@@ -67,9 +67,23 @@ export function generateAndWriteReadme(projectPath: string, options: UserOptions
       en: '- **Git Commit Convention**: Using Husky, lint-staged, and Commitlint...',
       zh: '- **Git Commit 规范**: 通过 Husky、lint-staged 和 Commitlint...',
     },
+    {
+      option: 'needsTypeScript',
+      en: '- **Auto Import**: `unplugin-auto-import` and `unplugin-vue-components` remove the need to manually import Vue APIs and components. Generated declarations live in `types/`.',
+      zh: '- **自动导入**: `unplugin-auto-import` 与 `unplugin-vue-components` 免去手动引入 Vue API 和组件，生成的类型声明位于 `types/` 目录。',
+    },
+    {
+      option: 'vueDevTools',
+      always: true,
+      en: '- **Vue DevTools**: `vite-plugin-vue-devtools` provides in-browser debugging for components, state, and routes.',
+      zh: '- **Vue DevTools**: `vite-plugin-vue-devtools` 提供组件、状态和路由的浏览器内调试面板。',
+    },
   ]
 
   const activeFeatures = featureDefinitions.filter((feature) => {
+    if (feature.always) {
+      return true
+    }
     const value = options[feature.option as keyof UserOptions]
     if (typeof value === 'boolean') {
       return value

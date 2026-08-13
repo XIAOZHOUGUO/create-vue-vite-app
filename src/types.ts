@@ -64,5 +64,4 @@ export interface FeatureResult {
 export interface OptionsArguments {
   name?: string
   template?: 'vue' | 'vue-ts'
-  useRolldown?: boolean
 }

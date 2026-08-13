@@ -1,6 +1,7 @@
 import type { FeatureResult, UserOptions } from '../types.ts'
 import fs from 'node:fs'
 import path from 'node:path'
+import { insertImports } from '../utils.ts'
 
 export function setupLightningCSS(projectPath: string, options: UserOptions): FeatureResult {
   // 1. 确定 vite.config 的文件名 (ts 或 js)
@@ -23,21 +24,7 @@ import { browserslistToTargets } from 'lightningcss'`
   },`
 
   // 3. 添加 import 语句
-  // 将文件内容按行分割
-  const lines = content.split('\n')
-  let lastImportIndex = -1
-  // 从后向前找到最后一个 import 语句的行号
-  for (let i = lines.length - 1; i >= 0; i--) {
-    if (lines[i].startsWith('import ')) {
-      lastImportIndex = i
-      break
-    }
-  }
-  // 在最后一个 import 语句后插入新的 import
-  if (lastImportIndex !== -1) {
-    lines.splice(lastImportIndex + 1, 0, importsToAdd)
-    content = lines.join('\n')
-  }
+  content = insertImports(content, [importsToAdd])
 
   // 4. 添加 css 配置
   // 匹配文件末尾的 '})'，并将我们的配置插入到它前面

@@ -69,6 +69,7 @@ Once your project is created, navigate into the project directory and follow the
 <% if (needsTypeScript) { -%>
 ├── tsconfig.json
 ├── tsconfig.node.json
+├── types/            # Auto-generated type declarations (auto-imports / components)
 <% } -%>
 <% if (needsUnoCSS) { -%>
 ├── uno.config.<%= ext %>

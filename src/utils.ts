@@ -149,6 +149,73 @@ export function sortObjectKeys<T extends object>(obj: T): T {
   }, {} as T)
 }
 
+/**
+ * 在文件内容的最后一条 import 语句之后插入新的 import 语句。
+ * @param content 文件内容。
+ * @param imports 要插入的 import 语句数组（每项可以是多行）。
+ * @returns 插入后的文件内容；未找到 import 语句时原样返回。
+ */
+export function insertImports(content: string, imports: string[]): string {
+  if (imports.length === 0)
+    return content
+
+  const lines = content.split('\n')
+  let lastImportIndex = -1
+  // 从后向前找到最后一个 import 语句的行号
+  for (let i = lines.length - 1; i >= 0; i--) {
+    if (lines[i].startsWith('import ')) {
+      lastImportIndex = i
+      break
+    }
+  }
+
+  if (lastImportIndex === -1)
+    return content
+
+  lines.splice(lastImportIndex + 1, 0, ...imports)
+  return lines.join('\n')
+}
+
+const PLUGINS_ARRAY_REGEX = /plugins:\s*\[/
+
+/**
+ * 将插件条目追加到 vite.config 的 `plugins` 数组末尾。
+ * @param content vite.config 文件内容。
+ * @param entries 要追加的插件条目（不含末尾逗号）。
+ * @returns 追加后的文件内容；未找到 `plugins` 数组时原样返回。
+ */
+export function appendVitePlugins(content: string, entries: string[]): string {
+  if (entries.length === 0)
+    return content
+
+  const match = PLUGINS_ARRAY_REGEX.exec(content)
+  if (!match)
+    return content
+
+  // 从 `[` 之后开始做括号配平，找到数组的闭合 `]`
+  const arrayStart = match.index + match[0].length
+  let depth = 1
+  let cursor = arrayStart
+  while (cursor < content.length && depth > 0) {
+    const char = content[cursor]
+    if (char === '[')
+      depth++
+    else if (char === ']')
+      depth--
+    cursor++
+  }
+
+  // 括号未配平（模板结构异常）时，退回到在 `plugins: [` 之后插入
+  if (depth !== 0)
+    return `${content.slice(0, arrayStart)}\n    ${entries.join(',\n    ')},${content.slice(arrayStart)}`
+
+  const closingIndex = cursor - 1
+  const existing = content.slice(arrayStart, closingIndex).trim().replace(/,$/, '')
+  const items = existing ? [existing, ...entries] : entries
+
+  return `${content.slice(0, arrayStart)}\n    ${items.join(',\n    ')},\n  ${content.slice(closingIndex)}`
+}
+
 // 预编译模板正则表达式提升性能
 const REMAINING_PLACEHOLDERS_REGEX = /^\s*\{\{ .* \}\}\s*$\n?/gm
 
