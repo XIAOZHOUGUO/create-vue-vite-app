@@ -11,6 +11,7 @@
 - **测试**: `nr test`（vitest，`pretest` 先自动 build）
 - **单测**: `npx vitest run tests/utils.test.ts`
 - **本地调试 CLI**: `node dist/index.js`
+- **发布**: `nr release`（预检环境 → `npm version` → 推送 main+tag → 手动 `npm publish`；参数 `major|minor|patch`，`--check` 仅预检）
 
 ## 架构
 
