@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process'
+import { execSync, spawn } from 'node:child_process'
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -114,6 +114,8 @@ describe('cli End-to-End Test', () => {
     expect(pkgJson.devDependencies).toHaveProperty('vite-plugin-vue-devtools')
     expect(pkgJson.devDependencies).toHaveProperty('unplugin-auto-import')
     expect(pkgJson.devDependencies).toHaveProperty('unplugin-vue-components')
+    expect(pkgJson.devDependencies).not.toHaveProperty('pnpm')
+    expect(pkgJson.packageManager).toMatch(/^pnpm@\d+\.\d+\.\d+$/)
 
     // Assert the default plugins were injected into vite.config.ts
     const viteConfig = readFileSync(join(projectPath, 'vite.config.ts'), 'utf-8')
@@ -140,5 +142,15 @@ describe('cli End-to-End Test', () => {
     const tsconfigApp = JSON.parse(readFileSync(join(projectPath, 'tsconfig.app.json'), 'utf-8'))
     expect(tsconfigApp.include).toContain('types/**/*.d.ts')
     expect(tsconfigApp.compilerOptions.paths).toEqual({ '@/*': ['./src/*'] })
+
+    // Assert all dependencies are pinned to version ranges instead of latest
+    const allDeps = { ...pkgJson.dependencies, ...pkgJson.devDependencies }
+    for (const [name, version] of Object.entries(allDeps)) {
+      expect(version, `${name} should have a pinned version`).toMatch(/^[\^~]?\d/)
+    }
+
+    // Assert the pinned versions are compatible: the generated project must type-check and build
+    execSync('pnpm run build', { cwd: projectPath, stdio: 'pipe' })
+    expect(existsSync(join(projectPath, 'dist', 'index.html'))).toBe(true)
   }, 180000) // 3-minute timeout for the full installation and setup
 })

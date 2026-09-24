@@ -1,8 +1,8 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
-import { describe, expect, it, vi } from 'vitest'
-import { appendVitePlugins, insertImports, validateProjectName } from '../src/utils'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
+import { appendVitePlugins, insertImports, resolveDependencyVersions, validateProjectName } from '../src/utils'
 
 // Mock the fs.existsSync method
 vi.mock('node:fs')
@@ -75,5 +75,28 @@ describe('appendVitePlugins', () => {
   it('should return the content unchanged when there is no plugins array', () => {
     const content = 'export default defineConfig({})\n'
     expect(appendVitePlugins(content, ['vueDevTools()'])).toBe(content)
+  })
+})
+
+describe('resolveDependencyVersions', () => {
+  beforeAll(async () => {
+    // node:fs 已被 mock，这里用真实 fs 读取版本清单内容
+    const actualFs = await vi.importActual<typeof fs>('node:fs')
+    const manifest = actualFs.readFileSync(path.join(__dirname, '../templates/versions/package.json'), 'utf-8')
+    vi.mocked(fs.existsSync).mockReturnValue(true)
+    vi.mocked(fs.readFileSync).mockReturnValue(manifest)
+  })
+
+  it('should resolve registered packages to pinned version ranges', () => {
+    const result = resolveDependencyVersions(['pinia', 'vue-router'])
+
+    expect(Object.keys(result)).toEqual(['pinia', 'vue-router'])
+    for (const version of Object.values(result)) {
+      expect(version).toMatch(/^[\^~]?\d+\.\d+\.\d+$/)
+    }
+  })
+
+  it('should throw for packages missing from the manifest', () => {
+    expect(() => resolveDependencyVersions(['pinia', 'not-registered-pkg'])).toThrow('not-registered-pkg')
   })
 })

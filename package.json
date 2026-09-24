@@ -32,10 +32,11 @@
     "templates/"
   ],
   "engines": {
-    "node": ">=21.0.0"
+    "node": ">=22.22.1"
   },
   "scripts": {
     "build": "tsdown",
+    "deps:update": "npx taze major -C templates/versions -w --maturity-period",
     "prepublishOnly": "npm run build",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",

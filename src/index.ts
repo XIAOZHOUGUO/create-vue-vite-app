@@ -20,7 +20,9 @@ import { setupVSCode } from './core/vscode.ts'
 import { promptUserOptions } from './prompts.ts'
 import {
   execPromise as exec,
+  getDependencyVersions,
   readJsonFile,
+  resolveDependencyVersions,
   sortObjectKeys,
   writeJsonFile,
 } from './utils.ts'
@@ -50,10 +52,12 @@ function createProject(projectName: string): string {
 async function scaffoldVite(projectPath: string, options: UserOptions): Promise<void> {
   const { packageManager, needsTypeScript } = options
   const template = needsTypeScript ? 'vue-ts' : 'vue'
+  // 固定 create-vite 版本，基础模板随版本清单一起升级，避免上游变更悄悄破坏脚手架
+  const createVite = `vite@${getDependencyVersions()['create-vite']}`
   const command
     = packageManager === 'pnpm'
-      ? `pnpm create vite . --template ${template} --immediate false`
-      : `npm create vite@latest . --template ${template} --immediate false`
+      ? `pnpm create ${createVite} . --template ${template} --immediate false`
+      : `npm create ${createVite} . --template ${template} --immediate false`
 
   const spinner = ora('正在使用 Vite 构建项目脚手架...').start()
   try {
@@ -126,18 +130,21 @@ async function installDependencies(projectPath: string, options: UserOptions, de
   try {
     const { packageManager } = options
 
-    if (packageManager === 'pnpm') {
-      devDeps.push('pnpm')
-    }
-
     const pkgPath = path.join(projectPath, 'package.json')
     const pkg = readJsonFile<PackageJson>(pkgPath)
 
-    pkg.dependencies = deps.reduce((acc, dep) => ({ ...acc, [dep]: 'latest' }), pkg.dependencies || {})
-    pkg.devDependencies = devDeps.reduce((acc, dep) => ({ ...acc, [dep]: 'latest' }), pkg.devDependencies || {})
+    if (packageManager === 'pnpm') {
+      // 锁定为用户当前使用的 pnpm 版本，pnpm 自身与 corepack 都会据此统一团队版本
+      const { stdout } = await exec('pnpm -v', { cwd: projectPath }, true)
+      pkg.packageManager = `pnpm@${stdout.trim()}`
+    }
 
-    pkg.dependencies = sortObjectKeys(pkg.dependencies)
-    pkg.devDependencies = sortObjectKeys(pkg.devDependencies)
+    // 已由 create-vite 模板声明的依赖（如 @types/node）保留模板版本，与 vite/vue 保持一致
+    const templateDeps = { ...pkg.dependencies, ...pkg.devDependencies }
+    const isNew = (dep: string): boolean => !(dep in templateDeps)
+
+    pkg.dependencies = sortObjectKeys({ ...pkg.dependencies, ...resolveDependencyVersions(deps.filter(isNew)) })
+    pkg.devDependencies = sortObjectKeys({ ...pkg.devDependencies, ...resolveDependencyVersions(devDeps.filter(isNew)) })
 
     writeJsonFile(pkgPath, pkg)
     await exec(`${packageManager} install`, { cwd: projectPath, stdio: 'ignore' })

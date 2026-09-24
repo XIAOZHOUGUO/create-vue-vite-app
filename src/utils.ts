@@ -320,3 +320,35 @@ export function renderTemplate(templateName: string, data: Record<string, any> =
     throw new Error(`渲染模板文件失败 ${templatePath}: ${(e as Error).message}`)
   }
 }
+
+let cachedVersions: Record<string, string> | undefined
+
+/**
+ * 读取 `templates/versions/package.json` 中维护的依赖版本清单。
+ * @returns 包名到版本范围的映射。
+ */
+export function getDependencyVersions(): Record<string, string> {
+  if (!cachedVersions) {
+    const __dirname = path.dirname(fileURLToPath(import.meta.url))
+    const manifest = readJsonFile<{ devDependencies: Record<string, string> }>(
+      path.join(__dirname, '../templates/versions/package.json'),
+    )
+    cachedVersions = manifest.devDependencies
+  }
+  return cachedVersions
+}
+
+/**
+ * 将包名数组解析为带版本号的依赖对象。
+ * @param names 包名数组。
+ * @returns 包名到版本范围的映射。
+ * @throws 当有包未在版本清单中登记时抛出异常，避免悄悄回退为 latest。
+ */
+export function resolveDependencyVersions(names: string[]): Record<string, string> {
+  const versions = getDependencyVersions()
+  const missing = names.filter(name => !versions[name])
+  if (missing.length > 0) {
+    throw new Error(`以下依赖未在 templates/versions/package.json 中登记版本: ${missing.join(', ')}`)
+  }
+  return Object.fromEntries(names.map(name => [name, versions[name]]))
+}

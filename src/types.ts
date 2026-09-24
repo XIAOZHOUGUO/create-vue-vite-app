@@ -36,6 +36,7 @@ export interface PackageJson {
   scripts?: Record<string, string>
   dependencies?: Record<string, string>
   devDependencies?: Record<string, string>
+  packageManager?: string
   config?: {
     commitizen: {
       path: string
