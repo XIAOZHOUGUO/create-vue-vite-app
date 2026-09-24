@@ -52,11 +52,9 @@ Once your project is created, navigate into the project directory and follow the
 <% if (needsPinia) { -%>
 │   ├── store/        # Pinia
 <% } -%>
-<% if (needsRouter) { -%>
-│   ├── views/        # pages
-<% } -%>
 │   ├── App.vue       # Root Vue component
 │   └── main.<%= ext %>   # Application entry file
+├── .editorconfig     # Editor coding style
 ├── .gitignore        # Git ignore file
 <% if (needsGitCommit) { -%>
 ├── commitlint.config.js

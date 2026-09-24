@@ -94,6 +94,16 @@ export function generateAndWriteReadme(projectPath: string, options: UserOptions
     return false
   })
 
+  const uiLibraries = options.uiLibraries ?? []
+  if (uiLibraries.length > 0) {
+    const names = uiLibraries.map(lib => `\`${lib}\``).join(', ')
+    activeFeatures.push({
+      option: 'uiLibraries',
+      en: `- **UI Libraries**: ${names}, components and APIs are imported on demand via resolvers.`,
+      zh: `- **UI 组件库**: ${names}，通过 resolvers 按需自动引入组件与 API。`,
+    })
+  }
+
   const featuresEn = activeFeatures.length > 0
     ? activeFeatures.map(f => f.en).join('\n')
     : '- **Basic Vue Setup**: A minimal Vue 3 project setup with Vite.'

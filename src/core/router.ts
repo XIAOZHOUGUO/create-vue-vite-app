@@ -12,10 +12,6 @@ export function setupRouter(projectPath: string, options: UserOptions): FeatureR
   const targetFile = needsTypeScript ? 'index.ts' : 'index.js'
   fs.writeFileSync(path.join(routerDir, targetFile), renderTemplate(templateName))
 
-  const viewsDir = path.join(projectPath, 'src', 'views')
-  fs.mkdirSync(viewsDir, { recursive: true })
-  fs.writeFileSync(path.join(viewsDir, 'Home.vue'), renderTemplate('Home.vue.tpl'))
-
   const appVuePath = path.join(projectPath, 'src', 'App.vue')
   let appVueContent = fs.readFileSync(appVuePath, 'utf-8')
   appVueContent

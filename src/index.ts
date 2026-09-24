@@ -232,7 +232,9 @@ async function main(name?: string, template?: string): Promise<void> {
   const allUsesToAdd: string[] = []
 
   // 先注入默认插件，后续 UnoCSS 插在 plugins 数组头部，保证其排在最前
-  allDevDependencies.push(...setupVitePlugins(projectPath, options).devDependencies)
+  const vitePluginsResult = setupVitePlugins(projectPath, options)
+  allDependencies.push(...vitePluginsResult.dependencies)
+  allDevDependencies.push(...vitePluginsResult.devDependencies)
 
   const featureSetups: Record<string, (p: string, o: UserOptions) => FeatureResult> = {
     needsRouter: setupRouter,

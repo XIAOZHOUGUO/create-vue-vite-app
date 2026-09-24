@@ -216,6 +216,31 @@ export function appendVitePlugins(content: string, entries: string[]): string {
   return `${content.slice(0, arrayStart)}\n    ${items.join(',\n    ')},\n  ${content.slice(closingIndex)}`
 }
 
+const DEFINE_CONFIG_REGEX = /defineConfig\(\{/
+
+/**
+ * 在 vite.config 的 `defineConfig({` 之后插入 `resolve.alias` 配置（依赖已导入 `path`）。
+ * @param content vite.config 文件内容。
+ * @param aliases 别名到相对项目根目录路径的映射，如 `{ '@': './src' }`。
+ * @returns 插入后的文件内容；未找到 `defineConfig({` 或已存在 `resolve` 时原样返回。
+ */
+export function insertViteResolveAlias(content: string, aliases: Record<string, string>): string {
+  const entries = Object.entries(aliases)
+  if (entries.length === 0 || /\bresolve\s*:/.test(content))
+    return content
+
+  const match = DEFINE_CONFIG_REGEX.exec(content)
+  if (!match)
+    return content
+
+  const aliasLines = entries
+    .map(([key, target]) => `      '${key}': path.resolve(import.meta.dirname, '${target}'),`)
+    .join('\n')
+  const resolveBlock = `\n  resolve: {\n    alias: {\n${aliasLines}\n    },\n  },`
+  const insertAt = match.index + match[0].length
+  return `${content.slice(0, insertAt)}${resolveBlock}${content.slice(insertAt)}`
+}
+
 // 预编译模板正则表达式提升性能
 const REMAINING_PLACEHOLDERS_REGEX = /^\s*\{\{ .* \}\}\s*$\n?/gm
 

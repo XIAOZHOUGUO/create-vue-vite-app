@@ -83,6 +83,7 @@ describe('cli End-to-End Test', () => {
       ENTER, // TypeScript
       ENTER, // Router
       ENTER, // Pinia
+      ENTER, // UI 组件库（默认 Element Plus）
       ENTER, // ESLint
       ARROW_DOWN + ENTER, // Sass
       ENTER, // UnoCSS
@@ -120,9 +121,24 @@ describe('cli End-to-End Test', () => {
     expect(viteConfig).toContain('dts: \'types/auto-imports.d.ts\'')
     expect(viteConfig).toContain('dts: \'types/components.d.ts\'')
     expect(viteConfig).toContain('imports: [\'vue\', \'vue-router\', \'pinia\']')
+    expect(viteConfig).toContain('resolvers: [ElementPlusResolver()]')
+    expect(viteConfig).toContain('\'@\': path.resolve(import.meta.dirname, \'./src\')')
+    expect(pkgJson.dependencies).toHaveProperty('element-plus')
+
+    // Assert router lazily loads HelloWorld via alias
+    const routerFile = readFileSync(join(projectPath, 'src', 'router', 'index.ts'), 'utf-8')
+    expect(routerFile).toContain('import(\'@/components/HelloWorld.vue\')')
+    expect(existsSync(join(projectPath, 'src', 'views'))).toBe(false)
+
+    // Assert editorconfig and .vscode is tracked by git
+    expect(existsSync(join(projectPath, '.editorconfig'))).toBe(true)
+    const extensions = JSON.parse(readFileSync(join(projectPath, '.vscode', 'extensions.json'), 'utf-8'))
+    expect(extensions.recommendations).toContain('EditorConfig.EditorConfig')
+    expect(readFileSync(join(projectPath, '.gitignore'), 'utf-8')).not.toContain('.vscode')
 
     // Assert the generated d.ts folder is covered by tsconfig
     const tsconfigApp = JSON.parse(readFileSync(join(projectPath, 'tsconfig.app.json'), 'utf-8'))
     expect(tsconfigApp.include).toContain('types/**/*.d.ts')
+    expect(tsconfigApp.compilerOptions.paths).toEqual({ '@/*': ['./src/*'] })
   }, 180000) // 3-minute timeout for the full installation and setup
 })

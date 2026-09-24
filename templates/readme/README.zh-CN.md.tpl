@@ -52,11 +52,9 @@
 <% if (needsPinia) { -%>
 │   ├── store/        # Pinia 状态管理模块
 <% } -%>
-<% if (needsRouter) { -%>
-│   ├── views/        # 页面级 Vue 组件
-<% } -%>
 │   ├── App.vue       # 应用根组件
 │   └── main.<%= ext %>   # 应用入口文件
+├── .editorconfig     # 编辑器编码风格配置
 ├── .gitignore        # Git 忽略文件
 <% if (needsGitCommit) { -%>
 ├── commitlint.config.js

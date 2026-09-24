@@ -56,6 +56,18 @@ export async function promptUserOptions(name?: string, template?: string): Promi
       initial: true,
     },
     {
+      type: 'multiselect',
+      name: 'uiLibraries',
+      message: '选择 UI 组件库 (按需自动引入):',
+      hint: '空格切换选中，回车确认',
+      instructions: false,
+      choices: [
+        { title: 'Element Plus', value: 'element-plus', selected: true },
+        { title: 'Naive UI', value: 'naive-ui' },
+        { title: 'Vant', value: 'vant' },
+      ],
+    },
+    {
       type: 'confirm',
       name: 'needsEslint',
       message: '是否需要 ESLint 用于代码质量检查?',

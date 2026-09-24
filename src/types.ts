@@ -7,11 +7,17 @@ export interface UserOptions {
   needsTypeScript: boolean
   needsRouter: boolean
   needsPinia: boolean
+  uiLibraries: UiLibrary[]
   needsEslint: boolean
   cssOption: 'none' | 'sass' | 'less' | 'lightningcss'
   needsUnoCSS: boolean
   needsGitCommit: boolean
 }
+
+/**
+ * 可选的 UI 组件库
+ */
+export type UiLibrary = 'element-plus' | 'naive-ui' | 'vant'
 
 /**
  * 排除掉项目名、包管理工具和ts后的用户选择的配置项
@@ -44,6 +50,10 @@ export interface PackageJson {
  */
 export interface TsConfigJson {
   include?: string[]
+  compilerOptions?: {
+    paths?: Record<string, string[]>
+    [key: string]: unknown
+  }
   [key: string]: unknown // 允许其他字段
 }
 
